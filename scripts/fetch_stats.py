@@ -32,8 +32,9 @@ STATE_FILE = ROOT / "data" / "stats_state.json"
 SITE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
 ET = ZoneInfo("America/New_York")
 
-MAX_GAMES_PER_RUN = 120     # box scores fetched per run (backfill continues next run)
-MAX_DAYS_PER_RUN = 90       # scoreboard days scanned per run
+MAX_SECONDS_PER_RUN = 9 * 60   # work until this much time has passed; anything left continues next run
+MAX_GAMES_PER_RUN = 2000        # effectively "a whole season", the time limit is what stops a run
+MAX_DAYS_PER_RUN = 400
 PAUSE = 0.25                # seconds between ESPN requests, to be polite
 
 # One game line, in this order, everywhere
@@ -147,7 +148,7 @@ def add_to_totals(tot: dict, line: dict) -> None:
 def crawl(cursor: date, end: date, done: set[str], budget: dict, on_game) -> date:
     """Walk scoreboard days from cursor to end. Returns the new cursor (first day not fully done)."""
     day, days = cursor, 0
-    while day <= end and days < MAX_DAYS_PER_RUN and budget["games"] > 0:
+    while day <= end and days < MAX_DAYS_PER_RUN and budget["games"] > 0 and time.time() < budget["deadline"]:
         board = get_json(f"{SITE}/scoreboard?dates={day:%Y%m%d}&limit=50")
         days += 1
         events = board.get("events") or []
@@ -165,7 +166,7 @@ def crawl(cursor: date, end: date, done: set[str], budget: dict, on_game) -> dat
             eid = str(ev.get("id"))
             if eid in done:
                 continue
-            if budget["games"] <= 0:
+            if budget["games"] <= 0 or time.time() >= budget["deadline"]:
                 all_final = False
                 break
             summary = get_json(f"{SITE}/summary?event={eid}")
@@ -202,7 +203,7 @@ def main() -> int:
     else:
         logs = json.loads(LOGS_FILE.read_text()).get("players", {}) if LOGS_FILE.exists() else {}
 
-    budget = {"games": MAX_GAMES_PER_RUN}
+    budget = {"games": MAX_GAMES_PER_RUN, "deadline": time.time() + MAX_SECONDS_PER_RUN}
     stats = {"cur": 0, "prev": 0}
 
     # ---- this season: game logs
@@ -222,7 +223,7 @@ def main() -> int:
     state["cur_done"] = sorted(done_cur)
 
     # ---- last season: totals only, backfilled in chunks
-    if not state.get("prev_complete") and budget["games"] > 0:
+    if not state.get("prev_complete") and budget["games"] > 0 and time.time() < budget["deadline"]:
         def on_prev(day, summary):
             for pid, line in parse_summary(summary, match_name):
                 add_to_totals(state["prev_tot"].setdefault(pid, {}), line)
