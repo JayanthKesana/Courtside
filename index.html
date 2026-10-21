@@ -1123,9 +1123,9 @@ async function fillCardStats(id) {
   const cur = seasonLine(id, "cur"), last = seasonLine(id, "last");
   const row = (label, s, note) => s ? `<tr><th scope="row">${esc(label)}${note ? ` <span class="muted">${note}</span>` : ""}</th><td>${s.gp}</td><td class="hi">${n1(s.fpg)}</td><td>${n1(s.min)}</td><td>${n1(s.pts)}</td><td>${n1(s.reb)}</td><td>${n1(s.ast)}</td><td>${n1(s.stl)}</td><td>${n1(s.blk)}</td><td>${n1(s.tpm)}</td><td>${n1(s.to)}</td><td>${pctf(s.fgp)}</td><td>${pctf(s.ftp)}</td></tr>`
     : `<tr><th scope="row">${esc(label)}</th><td colspan="12" class="muted left">No games${which(label)}</td></tr>`;
-  const which = l => l === st.lastLabel && !st.lastComplete ? " collected yet (last season is still loading)" : "";
+  const which = () => " yet";
   const table = `<div class="tbl-wrap stat-tbl"><table><thead><tr><th>Season</th><th>GP</th><th>FP/G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>3PM</th><th>TO</th><th>FG%</th><th>FT%</th></tr></thead><tbody>
-    ${row(st.curLabel || "This season", cur)}${row(st.lastLabel || "Last season", last, !st.lastComplete && last ? "(partial)" : "")}</tbody></table></div>`;
+    ${row(st.curLabel || "This season", cur)}${st.lastComplete ? row(st.lastLabel || "Last season", last) : ""}</tbody></table></div>`;
 
   const logs = S.logs[id] || [];
   const games = logs.slice(-20).map(r => ({ label: r.d.slice(5).replace("-", "/"), y: fpts(r), title: `${r.d} ${r.ha === "H" ? "vs" : "@"} ${r.opp}: ${n1(fpts(r))} FP · ${r.pts} PTS ${r.reb} REB ${r.ast} AST` }));
@@ -1166,10 +1166,8 @@ async function viewPlayers(v) {
   await Promise.all([loadStats(), loadLogs(), loadTrending().catch(() => {})]);
   if (S.tab !== "players") return;
   const st = S.stats;
-  if (!S.pf.season) {
-    const maxGp = Math.max(0, ...Object.values(st.cur || {}).map(t => t.gp || 0));
-    S.pf.season = maxGp >= 5 || !Object.keys(st.last || {}).length ? "cur" : "last";
-  }
+  // This season is the default. Last season is offered only once it's fully collected.
+  if (!S.pf.season || (S.pf.season === "last" && !st.lastComplete)) S.pf.season = "cur";
   const teams = [...new Set(Object.values(S.players).map(p => p.t).filter(Boolean))].sort();
   const f = S.pf;
   v.innerHTML = `<div class="panel">
@@ -1189,7 +1187,7 @@ async function viewPlayers(v) {
         <label class="pf-sel"><span class="eyebrow">Sort by</span><select class="ctl" id="pfSort">${SORTS.map(([k, l]) => `<option value="${k}" ${f.sort === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
         <label class="pf-sel"><span class="eyebrow">Stats from</span><select class="ctl" id="pfSeason">
           <option value="cur" ${f.season === "cur" ? "selected" : ""}>${esc(st.curLabel || "This season")}</option>
-          <option value="last" ${f.season === "last" ? "selected" : ""}>${esc(st.lastLabel || "Last season")}${st.lastComplete === false ? " (loading)" : ""}</option></select></label>
+          ${st.lastComplete ? `<option value="last" ${f.season === "last" ? "selected" : ""}>${esc(st.lastLabel || "Last season")}</option>` : ""}</select></label>
       </div>
     </div>
     <div class="card"><div class="tbl-wrap"><table class="ptbl"><thead><tr><th class="n">#</th><th>Player</th><th>Fantasy team</th><th class="n">GP</th><th class="n">FP/G</th><th class="n">MIN</th><th class="n">PTS</th><th class="n">REB</th><th class="n">AST</th><th class="n">STL</th><th class="n">BLK</th><th class="n">3PM</th><th class="n">TO</th><th class="n">FG%</th></tr></thead><tbody id="pfBody"></tbody></table></div>
