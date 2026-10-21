@@ -334,7 +334,7 @@ dialog#pcard::backdrop { background: rgba(6, 9, 20, .62); backdrop-filter: blur(
 .pc-empty code { font-family: var(--font-mono); font-size: 13px; }
 
 /* ---------- player card stats ---------- */
-.pc-stats { padding: 16px 18px 0; display: grid; gap: 10px; }
+.pc-stats { padding: 16px 18px 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .pc-stats:empty { display: none; }
 .stat-tbl { border: 1px solid var(--line); border-radius: 12px; }
 .stat-tbl table { font-size: 13px; }
@@ -344,13 +344,12 @@ dialog#pcard::backdrop { background: rgba(6, 9, 20, .62); backdrop-filter: blur(
 .stat-tbl tbody th { font-family: var(--font-body); font-weight: 600; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--fg); background: none; white-space: nowrap; }
 .stat-tbl .hi, .ptbl .hi { color: var(--home); font-weight: 600; }
 .stat-tbl .w { color: var(--win); } .stat-tbl .l { color: var(--bad); }
-.career tr.pick { cursor: pointer; }
-.career tr.pick:hover td { background: var(--surface-2); }
-.career tr.pick.on td { background: color-mix(in srgb, var(--home) 14%, transparent); }
-.career tr.pick.on td:first-child { box-shadow: inset 3px 0 0 var(--home); font-weight: 700; }
-.career { max-height: 300px; overflow: auto; }
+.gl-head .eyebrow { flex: none; }
+.seg.tabs-scroll { display: flex; flex-wrap: nowrap; overflow-x: auto; width: max-content; max-width: 100%; min-width: 0; scrollbar-width: none; }
+.tabs-scroll::-webkit-scrollbar { display: none; }
+.tabs-scroll button { flex: none; }
 .small { font-size: 12px; }
-.gl-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.gl-head { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 8px; }
 .seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
 .seg button { border: 0; background: none; border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
 .seg button[aria-selected="true"] { background: var(--home); color: #fff; }
@@ -1111,17 +1110,12 @@ async function fillCardStats(id) {
     const me = career.find(c => c.l === label);
     const avg = { fp: me.fp, min: me.a.min, pts: me.a.pts, reb: me.a.reb, ast: me.a.ast, stl: me.a.stl, blk: me.a.blk, tpm: me.a.tpm, to: me.a.to };
     const c = (v, k, inv, fmt = x => x, cls = "") => `<td${cls ? ` class="${cls}"` : ""}${heat(v, avg[k], inv)}>${v == null ? "—" : fmt(v)}</td>`;
-    const careerRows = career.map(({ l, a, fp }) => `<tr class="pick${l === label ? " on" : ""}" data-season="${esc(l)}" tabindex="0" role="button" aria-pressed="${l === label}">
-        <td class="left">${esc(l)}</td><td>${a.gp}</td><td class="fp">${n1(fp)}</td><td>${n1(a.min)}</td><td>${n1(a.pts)}</td><td>${n1(a.reb)}</td><td>${n1(a.ast)}</td><td>${n1(a.stl)}</td><td>${n1(a.blk)}</td><td>${n1(a.tpm)}</td><td>${n1(a.to)}</td><td>${pctf(a.fgp)}</td><td>${pctf(a.ftp)}</td></tr>`).join("");
+    const tabs = labels.map(l => `<button type="button" role="tab" data-season="${esc(l)}" aria-selected="${l === label}">${esc(l)}</button>`).join("");
     const logRows = [...games].reverse().map(r => `<tr><td class="left">${esc(r.d.slice(5).replace("-", "/"))}</td><td class="left">${r.ha === "H" ? "" : "@"}${esc(r.opp)}</td><td class="left ${String(r.res).startsWith("W") ? "w" : "l"}">${esc(r.res)}</td>
         ${c(fpts(r), "fp", false, x => x.toFixed(1), "fp")}${c(Math.round(r.min), "min")}${c(r.pts, "pts")}${c(r.reb, "reb")}${c(r.ast, "ast")}${c(r.stl, "stl")}${c(r.blk, "blk")}${c(r.tpm, "tpm")}${c(r.to, "to", true)}
         <td>${r.fgm}-${r.fga}</td><td>${r.ftm}-${r.fta}</td></tr>`).join("");
     box.innerHTML = `
-      <span class="eyebrow">Season by season · per game</span>
-      <div class="tbl-wrap stat-tbl career"><table>
-        <thead><tr><th class="left">Season</th><th>GP</th><th>FP/G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>3PM</th><th>TO</th><th>FG%</th><th>FT%</th></tr></thead>
-        <tbody>${careerRows}</tbody></table></div>
-      <div class="gl-head"><span class="eyebrow">Game log · ${esc(label)}</span><span class="muted small">Select a season above to switch</span></div>
+      <div class="gl-head"><span class="eyebrow">Game logs</span><div class="seg tabs-scroll" role="tablist" id="glTabs">${tabs}</div></div>
       <div class="tbl-wrap stat-tbl gl"><table>
         <thead>
           <tr class="grp"><th colspan="3"></th><th class="g-fan">Fantasy</th><th colspan="8">Box score</th><th colspan="2">Shooting</th></tr>
@@ -1132,10 +1126,8 @@ async function fillCardStats(id) {
           ${logRows}
         </tbody></table></div>
       <div class="ch-note muted">FPTS uses your league's scoring. Green and red cells mark games well above or below this player's ${esc(label)} average.</div>`;
-    box.querySelectorAll("tr.pick").forEach(tr => {
-      const go = () => { label = S.cardSeason = tr.dataset.season; render(); };
-      tr.onclick = go; tr.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
-    });
+    $("glTabs").onclick = e => { const b = e.target.closest("button[data-season]"); if (!b) return; label = S.cardSeason = b.dataset.season; render(); };
+    $("glTabs").querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
   };
   render();
 }
