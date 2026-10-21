@@ -1,0 +1,334 @@
+{
+ "cutoff": null,
+ "seasons": [
+  {
+   "season": "2025-26",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 401809835: PHX: same columns in a different order",
+    "game 401809835: OKC: same columns in a different order",
+    "game 401810505: SAC: same columns in a different order",
+    "game 401810505: DET: same columns in a different order",
+    "game 401810831: MIN: same columns in a different order",
+    "game 401810831: OKC: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2024-25",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 401734902: ORL: same columns in a different order",
+    "game 401734902: MIL: same columns in a different order",
+    "game 401705199: IND: same columns in a different order",
+    "game 401705199: SA: same columns in a different order",
+    "game 401705534: BOS: same columns in a different order",
+    "game 401705534: BKN: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2023-24",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 401584920: MIA: same columns in a different order",
+    "game 401584920: CHA: same columns in a different order",
+    "game 401585255: PHI: same columns in a different order",
+    "game 401585255: IND: same columns in a different order",
+    "game 401585589: PHX: same columns in a different order",
+    "game 401585589: CHA: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2022-23",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 401468542: SA: same columns in a different order",
+    "game 401468542: MIA: same columns in a different order",
+    "game 401468875: IND: same columns in a different order",
+    "game 401468875: ORL: same columns in a different order",
+    "game 401469190: PHI: same columns in a different order",
+    "game 401469190: CLE: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2021-22",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 401360206: SAC: same columns in a different order",
+    "game 401360206: CHA: same columns in a different order",
+    "game 401360533: DEN: same columns in a different order",
+    "game 401360533: DET: same columns in a different order",
+    "game 401360848: MEM: same columns in a different order",
+    "game 401360848: IND: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2020-21",
+   "identical": false,
+   "games_checked": 2,
+   "issues": [
+    "no finished game found near 2020-12-10",
+    "game 401267417: PHI: same columns in a different order",
+    "game 401267417: DET: same columns in a different order",
+    "game 401307386: SAC: same columns in a different order",
+    "game 401307386: CHA: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2019-20",
+   "identical": false,
+   "games_checked": 2,
+   "issues": [
+    "game 401160994: WSH: same columns in a different order",
+    "game 401160994: CHA: same columns in a different order",
+    "game 401161322: DAL: same columns in a different order",
+    "game 401161322: UTAH: same columns in a different order",
+    "no finished game found near 2020-03-15"
+   ]
+  },
+  {
+   "season": "2018-19",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 401071072: WSH: same columns in a different order",
+    "game 401071072: IND: same columns in a different order",
+    "game 401071393: WSH: same columns in a different order",
+    "game 401071393: ORL: same columns in a different order",
+    "game 401071699: LAL: same columns in a different order",
+    "game 401071699: DET: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2017-18",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 400975136: TOR: same columns in a different order",
+    "game 400975136: SAC: same columns in a different order",
+    "game 400975456: SAC: same columns in a different order",
+    "game 400975456: MIA: same columns in a different order",
+    "game 400975766: TOR: same columns in a different order",
+    "game 400975766: IND: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2016-17",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 400899788: MIL: same columns in a different order",
+    "game 400899788: WSH: same columns in a different order",
+    "game 400900101: SAC: same columns in a different order",
+    "game 400900101: CLE: same columns in a different order",
+    "game 400900399: DAL: same columns in a different order",
+    "game 400900399: WSH: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2015-16",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 400828216: PHI: same columns in a different order",
+    "game 400828216: BKN: same columns in a different order",
+    "game 400828554: MIN: same columns in a different order",
+    "game 400828554: CLE: same columns in a different order",
+    "game 400828884: BOS: same columns in a different order",
+    "game 400828884: IND: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2014-15",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 400578608: BOS: same columns in a different order",
+    "game 400578608: CHA: same columns in a different order",
+    "game 400578949: MIA: same columns in a different order",
+    "game 400578949: MIA: player points add to 0, team scored 96",
+    "game 400578949: CHI: same columns in a different order",
+    "game 400578949: CHI: player points add to 0, team scored 84",
+    "game 400579274: CHI: same columns in a different order",
+    "game 400579274: CHI: player points add to 0, team scored 100",
+    "game 400579274: OKC: same columns in a different order",
+    "game 400579274: OKC: player points add to 0, team scored 109"
+   ]
+  },
+  {
+   "season": "2013-14",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 400489183: NY: same columns in a different order",
+    "game 400489183: CLE: same columns in a different order",
+    "game 400489519: CHI: same columns in a different order",
+    "game 400489519: CHI: player points add to 0, team scored 89",
+    "game 400489519: CHA: same columns in a different order",
+    "game 400489519: CHA: player points add to 0, team scored 87",
+    "game 400489854: MIL: same columns in a different order",
+    "game 400489854: NY: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2012-13",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 400278018: DET: same columns in a different order",
+    "game 400278018: PHI: same columns in a different order",
+    "game 400278352: MIN: same columns in a different order",
+    "game 400278352: WSH: same columns in a different order",
+    "game 400278689: CHA: same columns in a different order",
+    "game 400278689: TOR: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2011-12",
+   "identical": false,
+   "games_checked": 2,
+   "issues": [
+    "no finished game found near 2011-12-10",
+    "game 320125005: NY: same columns in a different order",
+    "game 320125005: CLE: same columns in a different order",
+    "game 320315003: WSH: same columns in a different order",
+    "game 320315003: NO: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2010-11",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 301210011: CHA: same columns in a different order",
+    "game 301210011: IND: same columns in a different order",
+    "game 310125027: DEN: same columns in a different order",
+    "game 310125027: WSH: same columns in a different order",
+    "game 310315001: MIL: same columns in a different order",
+    "game 310315001: ATL: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2009-10",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 291210008: DEN: same columns in a different order",
+    "game 291210008: DET: same columns in a different order",
+    "game 300125020: IND: same columns in a different order",
+    "game 300125020: PHI: same columns in a different order",
+    "game 300315020: NY: same columns in a different order",
+    "game 300315020: PHI: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2008-09",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 281210028: IND: same columns in a different order",
+    "game 281210028: TOR: same columns in a different order",
+    "game 290125002: DAL: same columns in a different order",
+    "game 290125002: BOS: same columns in a different order",
+    "game 290315028: IND: same columns in a different order",
+    "game 290315028: TOR: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2007-08",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 271210019: ATL: same columns in a different order",
+    "game 271210019: ORL: same columns in a different order",
+    "game 280125003: LAC: same columns in a different order",
+    "game 280125003: NO: same columns in a different order",
+    "game 280315019: IND: same columns in a different order",
+    "game 280315019: ORL: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2006-07",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 261210028: POR: same columns in a different order",
+    "game 261210028: TOR: same columns in a different order",
+    "game 270125004: DAL: same columns in a different order",
+    "game 270125004: DAL: player points add to 83, team scored 85",
+    "game 270125004: CHI: same columns in a different order",
+    "game 270315015: SA: same columns in a different order",
+    "game 270315015: MIL: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2005-06",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 251210001: SA: same columns in a different order",
+    "game 251210001: ATL: same columns in a different order",
+    "game 260125001: CLE: same columns in a different order",
+    "game 260125001: ATL: same columns in a different order",
+    "game 260315011: DEN: same columns in a different order",
+    "game 260315011: IND: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2004-05",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 241210004: PHI: same columns in a different order",
+    "game 241210004: CHI: same columns in a different order",
+    "game 250125023: NJ: same columns in a different order",
+    "game 250125023: SAC: same columns in a different order",
+    "game 250315005: UTAH: same columns in a different order",
+    "game 250315005: CLE: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2003-04",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 231210002: SEA: same columns in a different order",
+    "game 231210002: BOS: same columns in a different order",
+    "game 240125006: SAC: same columns in a different order",
+    "game 240125006: DAL: same columns in a different order",
+    "game 240315010: PHX: same columns in a different order",
+    "game 240315010: HOU: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2002-03",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 221210027: POR: same columns in a different order",
+    "game 221210027: WSH: same columns in a different order",
+    "game 230125014: PHI: same columns in a different order",
+    "game 230125014: MIA: same columns in a different order",
+    "game 230315019: NO: same columns in a different order",
+    "game 230315019: ORL: same columns in a different order"
+   ]
+  },
+  {
+   "season": "2001-02",
+   "identical": false,
+   "games_checked": 3,
+   "issues": [
+    "game 211210026: DAL: same columns in a different order",
+    "game 211210026: UTAH: same columns in a different order",
+    "game 220125011: CHA: same columns in a different order",
+    "game 220125011: IND: same columns in a different order",
+    "game 220315016: IND: same columns in a different order",
+    "game 220315016: MIN: same columns in a different order"
+   ]
+  }
+ ]
+}
