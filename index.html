@@ -64,7 +64,7 @@ body {
 button, select, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--home); outline-offset: 2px; border-radius: 6px; }
-.wrap { max-width: 1160px; margin: 0 auto; padding-block: 0 56px; display: grid; gap: 22px; }
+.wrap { max-width: 1160px; margin: 0 auto; padding-block: 0 56px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
 .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
 .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
@@ -162,7 +162,7 @@ nav.tabs button {
 }
 nav.tabs button:hover { color: var(--fg); }
 nav.tabs button[aria-selected="true"] { color: #fff; background: var(--home); box-shadow: 0 4px 14px var(--glow); }
-.panel { display: grid; gap: 16px; }
+.panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .panel-head { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 16px; justify-content: space-between; }
 .panel-head > div { display: grid; gap: 4px; }
 
@@ -303,6 +303,62 @@ tr.in .rank { color: var(--fg); }
 .trow .r { text-align: right; display: grid; gap: 4px; justify-items: end; }
 .trow .r .num { font-size: 13px; color: var(--muted); }
 
+/* ---------- clickable players + player card ---------- */
+.plink { background: none; border: 0; padding: 0; font: inherit; font-weight: inherit; color: inherit; text-align: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; transition: text-decoration-color .15s, color .15s; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.plink:hover { text-decoration-color: var(--home); color: var(--home); }
+.hs[data-pid] { cursor: pointer; }
+.ndot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--away); margin-left: 6px; vertical-align: 2px; box-shadow: 0 0 0 3px var(--away-soft); }
+dialog#pcard {
+  padding: 0; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); color: var(--fg);
+  width: min(560px, calc(100vw - 24px)); max-height: min(86vh, 900px); overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0,0,0,.45);
+}
+dialog#pcard::backdrop { background: rgba(6, 9, 20, .62); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.pc { max-height: min(86vh, 900px); overflow-y: auto; overscroll-behavior: contain; }
+.pc-head { position: sticky; top: 0; z-index: 1; display: flex; gap: 14px; align-items: center; padding: 18px 18px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.pc-id { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.pc-id h2 { font-size: 30px; }
+.pc-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; font-size: 13px; }
+.pc-x { align-self: flex-start; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface-2); font-size: 20px; line-height: 1; display: grid; place-items: center; }
+.pc-x:hover { border-color: var(--home); }
+.pc-note { margin: 16px 18px 0; padding: 12px 14px; border-radius: 12px; background: var(--warn-soft); display: grid; gap: 4px; }
+.pc-note p { margin: 0; }
+.pc-news { padding: 16px 18px 20px; display: grid; gap: 12px; }
+.blurb { background: color-mix(in srgb, var(--away) 10%, var(--surface-2)); border-radius: 14px; padding: 16px 18px; display: grid; gap: 8px; }
+.blurb h3 { margin: 0; font-family: var(--font-body); font-weight: 700; font-size: 19px; line-height: 1.25; text-wrap: balance; }
+.blurb .via { font-size: 13px; color: var(--muted); }
+.blurb p { margin: 0; line-height: 1.55; }
+.blurb .src { font-size: 13px; color: var(--away); text-decoration: none; font-weight: 600; }
+.blurb .src:hover { text-decoration: underline; }
+.pc-empty { padding: 18px; border-radius: 12px; border: 1px dashed var(--line); color: var(--muted); }
+.pc-empty code { font-family: var(--font-mono); font-size: 13px; }
+
+/* ---------- injuries ---------- */
+.chg-list { display: grid; }
+.chg { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); position: relative; }
+.chg:last-child { border-bottom: 0; }
+.chg::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--bad); }
+.chg.up::before { background: var(--win); }
+.chg .t { display: grid; min-width: 0; }
+.chg .t b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chg .t small { font-size: 12px; color: var(--muted); }
+.chg .flow { display: inline-flex; align-items: center; gap: 6px; }
+.chg .arrow { color: var(--muted); font-weight: 700; }
+.chg .r { display: grid; text-align: right; }
+.chg .verb { font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: .05em; font-size: 15px; color: var(--bad); }
+.chg.up .verb { color: var(--win); }
+.chg .r small { font-size: 12px; color: var(--muted); }
+.chg-empty { padding: 22px 18px; color: var(--muted); }
+.note-row td { white-space: normal; font-size: 13px; color: var(--muted); padding-top: 0; padding-left: 58px; border-top: 0; }
+tr:has(+ .note-row) td { border-bottom: 0; }
+@media (max-width: 640px) {
+  .chg { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 6px; }
+  .chg .flow { grid-column: 2 / -1; }
+  .chg .own { grid-column: 2 / -1; }
+  .chg .r { grid-row: 1; grid-column: 3; }
+  .note-row td { padding-left: 14px; }
+}
+
 .empty { padding: 40px 20px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: 18px; }
 .err { padding: 14px 16px; border-radius: 12px; background: var(--bad-soft); color: var(--fg); border: 1px solid var(--bad); display: grid; gap: 6px; }
 .err b { color: var(--bad); }
@@ -374,6 +430,7 @@ tr.in .rank { color: var(--fg); }
         <button role="tab" data-tab="scores">Scoreboard</button>
         <button role="tab" data-tab="standings">Standings</button>
         <button role="tab" data-tab="rosters">Rosters</button>
+        <button role="tab" data-tab="injuries">Injuries</button>
         <button role="tab" data-tab="moves">Transactions</button>
         <button role="tab" data-tab="trending">Trending</button>
       </nav>
@@ -382,6 +439,8 @@ tr.in .rank { color: var(--fg); }
     </div>
   </section>
 </div>
+
+<dialog id="pcard" aria-label="Player details"><div id="pcBody" class="pc"></div></dialog>
 
 <script>
 const API = "https://api.sleeper.app/v1";
@@ -437,8 +496,59 @@ function teamAv(rid, size = 36, side = "") {
 }
 const P = id => S.players[id] || null;
 function pName(id) { if (!id || id === "0") return null; const p = P(id); return p ? p.n : `Player ${id}`; }
+
+/* ---------- player news (news.json, built by the GitHub Action) ---------- */
+S.news = null; S.newsAt = 0;
+async function loadNews(force) {
+  if (!force && S.news && Date.now() - S.newsAt < 5 * 60e3) return;
+  try {
+    const r = await fetch(`news.json?t=${Math.floor(Date.now() / 60e3)}`, { cache: "no-store" });
+    if (!r.ok) throw new Error(String(r.status));
+    S.news = await r.json(); S.newsAt = Date.now();
+  } catch { if (!S.news) S.news = { missing: true, players: {} }; }
+}
+const newsFor = id => (S.news?.players?.[id]) || [];
+const hasFreshNews = id => newsFor(id).some(n => n.ts > Date.now() - 864e5);
+function pBtn(id) {
+  const nm = pName(id); if (!nm) return "";
+  return `<button type="button" class="plink" data-pid="${esc(id)}">${esc(nm)}${hasFreshNews(id) ? `<span class="ndot" title="News in the last 24 hours"></span>` : ""}</button>`;
+}
+function fmtTime(ts) {
+  const d = (Date.now() - ts) / 1000;
+  if (d < 60) return "just now";
+  if (d < 3600) return `${Math.round(d / 60)} minutes ago`;
+  if (d < 86400) { const h = Math.round(d / 3600); return `${h} hour${h > 1 ? "s" : ""} ago`; }
+  const days = Math.round(d / 86400); return `${days} day${days > 1 ? "s" : ""} ago`;
+}
+const paras = t => esc(t).split(/\n{2,}/).map(x => `<p>${x.replace(/\n/g, "<br>")}</p>`).join("");
+function openCard(id) {
+  const p = P(id) || { n: `Player ${id}` };
+  const owner = whoHas(id);
+  const ownerTag = owner == null ? `<span class="badge ok first">Available in your league</span>` : isMe(owner) ? `<span class="badge home first">On your team</span>` : `<span class="badge plain first">${esc(teamName(owner))}</span>`;
+  const status = `<span class="badge ${statusCls(p.i)} first">${esc(statusLabel(p.i))}</span>${p.b ? ` <span class="muted">${esc(p.b)}</span>` : ""}`;
+  const items = newsFor(id);
+  let news;
+  if (S.news?.missing) news = `<div class="pc-empty">No news file yet. News comes from <code>news.json</code> next to this page, which the “Update player news” GitHub Action creates on its first run.</div>`;
+  else if (!items.length) news = `<div class="pc-empty">No news for ${esc(p.n)} in the last three weeks.</div>`;
+  else news = items.map(n => `<article class="blurb">
+      <h3>${esc(p.n)} - ${esc(n.t)}</h3>
+      <div class="via">${fmtTime(n.ts)} via ${esc(n.src)}</div>
+      ${n.b ? paras(n.b) : ""}
+      ${n.a ? `<p><b>Analysis:</b> ${esc(n.a)}</p>` : ""}
+      ${n.url ? `<a class="src" href="${esc(n.url)}" target="_blank" rel="noopener">Read on ${esc(n.src)} ↗</a>` : ""}
+    </article>`).join("");
+  $("pcBody").innerHTML = `
+    <header class="pc-head">${headshot(id, 64).replace('data-pid', 'data-x')}<div class="pc-id"><h2>${esc(p.n)}</h2><span class="muted">${esc(p.p || "")} · ${esc(p.t || "Free agent")}</span><div class="pc-tags">${status}${ownerTag}</div></div>
+      <button type="button" class="pc-x" id="pcClose" aria-label="Close">×</button></header>
+    ${p.no ? `<div class="pc-note"><span class="eyebrow">Injury note</span><p>${esc(p.no)}</p></div>` : ""}
+    <div class="pc-news"><span class="eyebrow">Latest news</span>${news}</div>`;
+  const dlg = $("pcard");
+  if (!dlg.open) dlg.showModal();
+  $("pcBody").scrollTop = 0;
+  $("pcClose").onclick = () => dlg.close();
+}
 function headshot(id, size = 38) {
-  return `<span class="hs" style="--s:${size}px"><i>${esc(initials(pName(id)))}</i><img src="https://sleepercdn.com/content/nba/players/thumb/${encodeURIComponent(id)}.jpg" alt="" loading="lazy" onerror="this.remove()"></span>`;
+  return `<span class="hs" data-pid="${esc(id)}" style="--s:${size}px"><i>${esc(initials(pName(id)))}</i><img src="https://sleepercdn.com/content/nba/players/thumb/${encodeURIComponent(id)}.jpg" alt="" loading="lazy" onerror="this.remove()"></span>`;
 }
 function abbrInj(s) {
   return ({ "Out": "Out", "Questionable": "Q", "Doubtful": "D", "Probable": "P", "Day To Day": "DTD", "Game Time Decision": "GTD", "Suspended": "Susp" })[s] || s;
@@ -463,22 +573,61 @@ function ago(ms) {
 const skeleton = n => `<div class="skel">${"<div></div>".repeat(n)}</div>`;
 
 /* ---------- players (cached for a day, slimmed to fit storage) ---------- */
-async function loadPlayers() {
-  const cached = store.get("cs_nba_players");
-  if (cached && Date.now() - cached.at < 864e5) { S.players = cached.data; return; }
+/* Sleeper asks apps to pull the full player list sparingly, so it's refreshed every 4 hours at most. */
+const PLAYER_TTL = 4 * 3600e3;
+async function loadPlayers(force) {
+  const cached = store.get("cs_nba_players_v2");
+  if (cached && !force && Date.now() - cached.at < PLAYER_TTL) { S.players = cached.data; S.playersAt = cached.at; return; }
   try {
     const raw = await get("/players/nba");
     const slim = {};
     for (const [id, p] of Object.entries(raw)) {
-      slim[id] = {
+      if (!p.active && !p.team && !p.injury_status) continue; // skip long-retired players to save space
+      const o = {
         n: p.full_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || id,
         p: (p.fantasy_positions || [p.position]).filter(Boolean).join("/"),
         t: p.team || "", i: p.injury_status || ""
       };
+      if (p.injury_body_part) o.b = p.injury_body_part;
+      if (p.injury_notes) o.no = p.injury_notes;
+      if (p.news_updated) o.u = p.news_updated;
+      slim[id] = o;
     }
-    S.players = slim;
-    store.set("cs_nba_players", { at: Date.now(), data: slim });
-  } catch (e) { if (cached) S.players = cached.data; console.warn("Player list unavailable", e); }
+    S.players = slim; S.playersAt = Date.now();
+    store.set("cs_nba_players_v2", { at: S.playersAt, data: slim });
+    store.del("cs_nba_players");
+  } catch (e) {
+    if (cached) { S.players = cached.data; S.playersAt = cached.at; }
+    console.warn("Player list unavailable", e);
+  }
+}
+
+/* ---------- status-change tracking ----------
+   Sleeper only exposes each player's current status, so the page keeps a snapshot
+   of every rostered player and logs a change whenever a fresh pull differs. */
+const SEV = s => !s ? 0 : /prob/i.test(s) ? 1 : /quest|day|game time|gtd|dtd/i.test(s) ? 2 : /doubt/i.test(s) ? 3 : 4;
+const statusLabel = s => s || "Active";
+const statusCls = s => SEV(s) === 0 ? "ok" : SEV(s) >= 4 ? "bad" : "warn";
+function injKey() { return `cs_inj_${S.league?.league_id}`; }
+function trackStatusChanges() {
+  if (!S.league || !Object.keys(S.players).length) return;
+  const rec = store.get(injKey()) || { snap: {}, log: [], at: 0 };
+  if (rec.at === S.playersAt) { S.injLog = rec.log; S.injSince = rec.first; return; }   // same data as last check
+  const ids = new Set(S.rosters.flatMap(r => r.players || []));
+  const snap = {}, now = Date.now();
+  for (const id of ids) {
+    const p = P(id); if (!p) continue;
+    snap[id] = p.i || "";
+    if (id in rec.snap && rec.snap[id] !== snap[id]) {
+      rec.log.unshift({ id, from: rec.snap[id], to: snap[id], at: p.u && p.u > now - 864e5 * 3 ? p.u : now, b: p.b || "" });
+    }
+  }
+  const cutoff = now - 14 * 864e5;
+  rec.log = rec.log.filter(c => c.at > cutoff).slice(0, 80);
+  rec.first = rec.first || now;
+  Object.assign(rec, { snap, at: S.playersAt });
+  store.set(injKey(), rec);
+  S.injLog = rec.log; S.injSince = rec.first;
 }
 
 /* ---------- setup flow ---------- */
@@ -546,6 +695,8 @@ async function refresh() {
   try {
     const [rosters, mu] = await Promise.all([get(`/league/${id}/rosters`), get(`/league/${id}/matchups/${S.week}`)]);
     S.rosters = rosters; S.matchups[S.week] = mu || [];
+    await Promise.all([loadPlayers(), loadNews()]);   // players: only re-downloaded every 4 hours
+    trackStatusChanges();
     if (S.tab === "moves") await loadTx(true);
     if (S.tab === "trending") await loadTrending(true);
     const live = $("autoRef").checked ? `<span class="live-dot"></span> Live · ` : "";
@@ -579,11 +730,18 @@ function renderAlerts() {
     const slot = slots[i] || "";
     if (!pid || pid === "0") { out.push(["bad", `Empty <b>${esc(slot)}</b> slot in your lineup`]); return; }
     const p = P(pid); if (!p) return;
-    if (p.i) out.push([/out|susp/i.test(p.i) ? "bad" : "warn", `<b>${esc(p.n)}</b> (${esc(slot)}) is ${esc(p.i)}`]);
-    else if (!p.t) out.push(["warn", `<b>${esc(p.n)}</b> (${esc(slot)}) has no NBA team`]);
+    if (p.i) out.push([/out|susp/i.test(p.i) ? "bad" : "warn", `<b>${pBtn(pid)}</b> (${esc(slot)}) is ${esc(p.i)}`]);
+    else if (!p.t) out.push(["warn", `<b>${pBtn(pid)}</b> (${esc(slot)}) has no NBA team`]);
   });
   const benchHurt = (me.players || []).filter(pid => !(me.starters || []).includes(pid) && !(me.reserve || []).includes(pid) && /out/i.test(P(pid)?.i || ""));
-  if (benchHurt.length) out.push(["warn", `Out on your bench: ${benchHurt.map(id => `<b>${esc(pName(id))}</b>`).join(", ")}. Move to IR if eligible`]);
+  if (benchHurt.length) out.push(["warn", `Out on your bench: ${benchHurt.map(id => `<b>${pBtn(id)}</b>`).join(", ")}. Move to IR if eligible`]);
+  const mine = new Set(me.players || []);
+  const seen = new Set();
+  (S.injLog || []).filter(c => mine.has(c.id) && c.at > Date.now() - 2 * 864e5).forEach(c => {
+    if (seen.has(c.id)) return; seen.add(c.id);
+    const better = SEV(c.to) < SEV(c.from);
+    out.unshift([better ? "ok" : "bad", `<b>${pBtn(c.id)}</b>: ${esc(statusLabel(c.from))} → <b>${esc(statusLabel(c.to))}</b> <span class="muted">· ${ago(c.at)}</span>`]);
+  });
   box.innerHTML = out.length
     ? out.map(([k, t]) => `<div class="alert ${k}"><span class="dot"></span><span>${t}</span></div>`).join("")
     : `<div class="alert ok"><span class="dot"></span><span>Lineup is full and no starters are on the injury report</span></div>`;
@@ -593,7 +751,7 @@ function renderAlerts() {
 function render() {
   renderAlerts();
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === S.tab));
-  ({ matchup: viewMatchup, scores: viewScores, standings: viewStandings, rosters: viewRosters, moves: viewMoves, trending: viewTrending })[S.tab]($("view"));
+  ({ matchup: viewMatchup, scores: viewScores, standings: viewStandings, rosters: viewRosters, injuries: viewInjuries, moves: viewMoves, trending: viewTrending })[S.tab]($("view"));
 }
 function pairings() {
   const g = {};
@@ -620,7 +778,7 @@ function viewMatchup(v) {
     const nm = pName(r.pid);
     if (!nm) return `<div class="${cls}"><span class="badge bad first">Empty slot</span></div>`;
     const isTop = top > 0 && r.pts === top && !bench;
-    return `<div class="${cls} ${isTop ? "top" : ""}">${headshot(r.pid, 34)}<span class="who"><b>${esc(nm)}${injury(r.pid)}</b><small>${esc(pSub(r.pid))}</small></span><span class="pts">${f2(r.pts)}</span></div>`;
+    return `<div class="${cls} ${isTop ? "top" : ""}">${headshot(r.pid, 34)}<span class="who"><b>${pBtn(r.pid)}${injury(r.pid)}</b><small>${esc(pSub(r.pid))}</small></span><span class="pts">${f2(r.pts)}</span></div>`;
   };
   let lines = "";
   const n = Math.max(slots.length, sa.length, sb.length);
@@ -690,7 +848,7 @@ function viewRosters(v) {
     if (!nm) return `<tr><td>${chip}</td><td><span class="badge bad first">Empty slot</span></td><td></td><td></td></tr>`;
     const p = P(pid) || {};
     const status = p.i ? `<span class="badge ${/out|susp/i.test(p.i) ? "bad" : "warn"} first">${esc(p.i)}</span>` : `<span class="badge ok first">Active</span>`;
-    return `<tr><td>${chip}</td><td><div class="pcell">${headshot(pid, 36)}<span class="t"><b>${esc(nm)}</b><small>${esc(p.p || "")}</small></span></div></td><td>${esc(p.t || "Free agent")}</td><td>${status}</td></tr>`;
+    return `<tr><td>${chip}</td><td><div class="pcell">${headshot(pid, 36)}<span class="t"><b>${pBtn(pid)}</b><small>${esc(p.p || "")}</small></span></div></td><td>${esc(p.t || "Free agent")}</td><td>${status}</td></tr>`;
   };
   const starters = r?.starters || [], reserve = r?.reserve || [], taxi = r?.taxi || [];
   const bench = (r?.players || []).filter(p => !starters.includes(p) && !reserve.includes(p) && !taxi.includes(p));
@@ -709,6 +867,43 @@ function viewRosters(v) {
   $("rosterSel").onchange = e => { S.viewRoster = Number(e.target.value); render(); };
 }
 
+function viewInjuries(v) {
+  const owner = id => whoHas(id);
+  const teamTag = rid => rid == null ? `<span class="badge plain first">Dropped</span>` : isMe(rid) ? `<span class="badge home first">Yours</span>` : `<span class="badge plain first">${esc(teamName(rid))}</span>`;
+  const chip = s => `<span class="badge ${statusCls(s)} first">${esc(statusLabel(s))}</span>`;
+
+  const log = S.injLog || [];
+  const changes = log.length
+    ? log.map(c => {
+        const better = SEV(c.to) < SEV(c.from);
+        const verb = !c.to ? "Cleared" : better ? "Upgraded" : "Downgraded";
+        return `<div class="chg ${better ? "up" : "down"}">${headshot(c.id, 38)}
+          <span class="t"><b>${pBtn(c.id)}</b><small>${esc(pSub(c.id))}${c.b ? " · " + esc(c.b) : ""}</small></span>
+          <span class="flow">${chip(c.from)}<span class="arrow" aria-label="to">→</span>${chip(c.to)}</span>
+          <span class="r"><span class="verb">${verb}</span><small>${ago(c.at)}</small></span>
+          <span class="own">${teamTag(owner(c.id))}</span></div>`;
+      }).join("")
+    : `<div class="chg-empty">No status changes since tracking started ${S.injSince ? ago(S.injSince) : "just now"}. New changes appear here the next time Sleeper's player data refreshes.</div>`;
+
+  const hurt = S.rosters.flatMap(r => (r.players || []).map(id => ({ id, rid: r.roster_id, p: P(id) })))
+    .filter(x => x.p?.i)
+    .sort((a, b) => (isMe(b.rid) - isMe(a.rid)) || (SEV(b.p.i) - SEV(a.p.i)) || (b.p.u || 0) - (a.p.u || 0));
+  const starters = new Set(S.rosters.flatMap(r => r.starters || []));
+  const report = hurt.length
+    ? hurt.map(x => `<tr class="${isMe(x.rid) ? "me" : ""}"><td><div class="pcell">${headshot(x.id, 34)}<span class="t"><b>${pBtn(x.id)}${starters.has(x.id) ? `<span class="badge home">Starting</span>` : ""}</b><small>${esc(x.p.p)} · ${esc(x.p.t || "Free agent")}</small></span></div></td>
+        <td>${chip(x.p.i)}</td><td>${esc(x.p.b || "—")}</td><td>${teamTag(x.rid)}</td><td class="n muted">${x.p.u ? ago(x.p.u) : "—"}</td></tr>
+        ${x.p.no ? `<tr class="${isMe(x.rid) ? "me" : ""} note-row"><td colspan="5">${esc(x.p.no)}</td></tr>` : ""}`).join("")
+    : `<tr><td colspan="5" class="muted">No rostered players are on the injury report.</td></tr>`;
+
+  v.innerHTML = `<div class="panel">
+    <div class="panel-head"><div><span class="eyebrow">Rostered players in your league</span><h2>Injuries</h2></div>
+      <span class="muted">Player data from Sleeper · checked ${S.playersAt ? ago(S.playersAt) : "never"} · refreshes every 4 hours</span></div>
+    <div class="card"><div class="trend-head"><h3>Status changes</h3><span class="eyebrow">Last 14 days</span></div><div class="chg-list">${changes}</div></div>
+    <div class="card"><div class="trend-head"><h3>Injury report</h3><span class="eyebrow">${hurt.length} listed</span></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Player</th><th>Status</th><th>Injury</th><th>Fantasy team</th><th class="n">News</th></tr></thead><tbody>${report}</tbody></table></div></div>
+  </div>`;
+}
+
 async function viewMoves(v) {
   if (!S.tx) { v.innerHTML = skeleton(4); try { await loadTx(); } catch (e) { v.innerHTML = errBox(e); return; } if (S.tab !== "moves") return; }
   const list = S.tx;
@@ -720,10 +915,10 @@ async function viewMoves(v) {
     list.map(t => {
       const [lab, cls] = typeLabel(t.type);
       const sides = (t.roster_ids || []).map(rid => {
-        const adds = Object.entries(t.adds || {}).filter(([, r]) => r === rid).map(([p]) => mv("p", `<b>${esc(pName(p))}</b>${injury(p)} <span class="muted">${esc(pSub(p))}</span>`));
+        const adds = Object.entries(t.adds || {}).filter(([, r]) => r === rid).map(([p]) => mv("p", `<b>${pBtn(p)}</b>${injury(p)} <span class="muted">${esc(pSub(p))}</span>`));
         const picks = (t.draft_picks || []).filter(d => d.owner_id === rid).map(d => mv("p", `${esc(d.season)} round ${d.round} pick <span class="muted">(${esc(teamName(d.roster_id))})</span>`));
         const faab = (t.waiver_budget || []).filter(w => w.receiver === rid).map(w => mv("p", `$${w.amount} FAAB`));
-        const drops = Object.entries(t.drops || {}).filter(([, r]) => r === rid).map(([p]) => mv("m", `${esc(pName(p))} <span class="muted">${esc(pSub(p))}</span>`));
+        const drops = Object.entries(t.drops || {}).filter(([, r]) => r === rid).map(([p]) => mv("m", `${pBtn(p)} <span class="muted">${esc(pSub(p))}</span>`));
         return `<div class="tx-side"><strong>${teamAv(rid, 24, isMe(rid) ? "home" : "")}${esc(teamName(rid))}</strong>${adds.join("")}${picks.join("")}${faab.join("")}${drops.join("")}</div>`;
       }).join("");
       const bid = t.type === "waiver" && t.settings?.waiver_bid != null ? `<span class="muted"> · $${t.settings.waiver_bid} bid</span>` : "";
@@ -739,7 +934,7 @@ async function viewTrending(v) {
       arr.length ? arr.map((x, i) => {
         const owner = whoHas(x.player_id);
         const where = owner == null ? `<span class="badge ok first">Available</span>` : isMe(owner) ? `<span class="badge home first">Yours</span>` : `<span class="badge plain first">${esc(teamName(owner))}</span>`;
-        return `<div class="trow ${kind}"><span class="i">${i + 1}</span>${headshot(x.player_id, 36)}<span class="t"><b>${esc(pName(x.player_id))}${injury(x.player_id)}</b><span class="meter"><span style="width:${(x.count / max) * 100}%"></span></span></span><span class="r">${where}<span class="num">${x.count.toLocaleString()}</span></span></div>`;
+        return `<div class="trow ${kind}"><span class="i">${i + 1}</span>${headshot(x.player_id, 36)}<span class="t"><b>${pBtn(x.player_id)}${injury(x.player_id)}</b><span class="meter"><span style="width:${(x.count / max) * 100}%"></span></span></span><span class="r">${where}<span class="num">${x.count.toLocaleString()}</span></span></div>`;
       }).join("") : `<div class="trow"><span></span><span></span><span class="muted">No data right now.</span><span></span></div>`}</div>`;
   };
   v.innerHTML = `<div class="panel"><div class="panel-head"><div><span class="eyebrow">Across all Sleeper NBA leagues</span><h2>Trending</h2></div><span class="muted">Tags show who has each player in your league</span></div>
@@ -757,7 +952,14 @@ $("teamSel").onchange = e => {
   S.myRosterId = Number(e.target.value) || null; S.viewRoster = S.myRosterId || S.viewRoster;
   const saved = store.get("cs_league") || {}; store.set("cs_league", { ...saved, myRosterId: S.myRosterId }); render();
 };
-$("refreshBtn").onclick = refresh;
+$("refreshBtn").onclick = async () => { await loadNews(true); refresh(); };
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-pid]");
+  if (!t || !S.league) return;
+  e.preventDefault(); e.stopPropagation();
+  openCard(t.dataset.pid);
+}, true);
+$("pcard").addEventListener("click", e => { if (e.target === $("pcard")) $("pcard").close(); });
 $("changeBtn").onclick = () => {
   store.del("cs_league"); clearInterval(S.timer); $("autoRef").checked = false;
   $("main").hidden = true; $("headActions").hidden = true; $("leagueMeta").hidden = true;
