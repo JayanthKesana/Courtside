@@ -2,7 +2,7 @@ name: Update player news
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # every 30 minutes (GitHub may run it a few minutes late)
+    - cron: "*/10 * * * *"   # every 10 minutes (GitHub may run it a few minutes late)
   workflow_dispatch:          # adds a "Run workflow" button on the Actions tab
 
 permissions:
@@ -17,9 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
