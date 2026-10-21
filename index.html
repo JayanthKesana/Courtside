@@ -186,7 +186,7 @@ nav.tabs button[aria-selected="true"] { color: #fff; background: var(--home); bo
   border-radius: 50%; border: 1.5px solid var(--line); opacity: .7; pointer-events: none;
 }
 .jumbo::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1.5px; background: var(--line); opacity: .7; pointer-events: none; }
-.jumbo-top { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding: 26px clamp(16px, 3vw, 32px) 18px; }
+.jumbo-top { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 26px clamp(16px, 3vw, 32px) 18px; }
 .jt { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .jt.right { flex-direction: row-reverse; text-align: right; }
 .jt .nm { min-width: 0; display: grid; gap: 2px; }
@@ -195,7 +195,7 @@ nav.tabs button[aria-selected="true"] { color: #fff; background: var(--home); bo
 .score { font-family: var(--font-display); font-weight: 900; font-size: clamp(44px, 7vw, 78px); line-height: .85; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .score.home { color: var(--home); } .score.away { color: var(--away); }
 .score.trail { opacity: .55; }
-.vs { font-family: var(--font-display); font-weight: 800; color: var(--muted); font-size: 15px; letter-spacing: .2em; background: var(--surface); padding: 6px 4px; position: relative; z-index: 1; }
+.vs { font-family: var(--font-display); font-weight: 800; color: var(--muted); font-size: 15px; letter-spacing: .2em; padding: 6px 4px 6px calc(4px + .2em); text-align: center; position: relative; z-index: 1; background: var(--surface); }
 .share { position: relative; z-index: 1; display: flex; height: 8px; margin: 0 clamp(16px, 3vw, 32px); border-radius: 999px; overflow: hidden; background: var(--surface-2); }
 .share .h { background: var(--home); transition: width .6s ease; }
 .share .a { background: var(--away); flex: 1; }
@@ -345,6 +345,9 @@ dialog#pcard::backdrop { background: rgba(6, 9, 20, .62); backdrop-filter: blur(
 .stat-tbl .hi, .ptbl .hi { color: var(--home); font-weight: 600; }
 .stat-tbl .w { color: var(--win); } .stat-tbl .l { color: var(--bad); }
 .gl-head .eyebrow { flex: none; }
+.career-title { margin-top: 10px; }
+.gl.career { max-height: none; }
+.gl.career tr.on td:first-child { box-shadow: inset 3px 0 0 var(--home); font-weight: 700; }
 .seg.tabs-scroll { display: flex; flex-wrap: nowrap; overflow-x: auto; width: max-content; max-width: 100%; min-width: 0; scrollbar-width: none; }
 .tabs-scroll::-webkit-scrollbar { display: none; }
 .tabs-scroll button { flex: none; }
@@ -1077,7 +1080,7 @@ function totalsFromGames(rows) {
 const n1 = v => v == null ? "—" : v.toFixed(1);
 const pctf = v => v == null ? "—" : (v * 100).toFixed(1);
 
-/* ---------- player card: career table + NFL-style game log ---------- */
+/* ---------- player card: season tabs, game log, career table ---------- */
 S.cardSeason = null;
 /* Shade a cell by how far this game was from the player's season average.
    Green = better than usual, red = worse. For turnovers, fewer is better. */
@@ -1111,6 +1114,13 @@ async function fillCardStats(id) {
     const avg = { fp: me.fp, min: me.a.min, pts: me.a.pts, reb: me.a.reb, ast: me.a.ast, stl: me.a.stl, blk: me.a.blk, tpm: me.a.tpm, to: me.a.to };
     const c = (v, k, inv, fmt = x => x, cls = "") => `<td${cls ? ` class="${cls}"` : ""}${heat(v, avg[k], inv)}>${v == null ? "—" : fmt(v)}</td>`;
     const tabs = labels.map(l => `<button type="button" role="tab" data-season="${esc(l)}" aria-selected="${l === label}">${esc(l)}</button>`).join("");
+    // Career table: one row per season, shaded against the player's average across all seasons shown
+    const allGames = labels.flatMap(l => all[l]);
+    const ca = avgLine(totalsFromGames(allGames));
+    const cfp = allGames.reduce((s, r) => s + (fpts(r) || 0), 0) / allGames.length;
+    const cavg = { fp: cfp, min: ca.min, pts: ca.pts, reb: ca.reb, ast: ca.ast, stl: ca.stl, blk: ca.blk, tpm: ca.tpm, to: ca.to };
+    const cc = (v, k, inv) => `<td${heat(v, cavg[k], inv)}>${n1(v)}</td>`;
+    const careerRows = career.map(({ l, a, fp }) => `<tr${l === label ? ' class="on"' : ""}><td class="left">${esc(l)}</td><td>${a.gp}</td><td class="fp">${(fp * a.gp).toFixed(1)}</td>${cc(fp, "fp").replace("<td", '<td class="fp"')}${cc(a.min, "min")}${cc(a.pts, "pts")}${cc(a.reb, "reb")}${cc(a.ast, "ast")}${cc(a.stl, "stl")}${cc(a.blk, "blk")}${cc(a.tpm, "tpm")}${cc(a.to, "to", true)}<td>${pctf(a.fgp)}</td><td>${pctf(a.ftp)}</td></tr>`).join("");
     const logRows = [...games].reverse().map(r => `<tr><td class="left">${esc(r.d.slice(5).replace("-", "/"))}</td><td class="left">${r.ha === "H" ? "" : "@"}${esc(r.opp)}</td><td class="left ${String(r.res).startsWith("W") ? "w" : "l"}">${esc(r.res)}</td>
         ${c(fpts(r), "fp", false, x => x.toFixed(1), "fp")}${c(Math.round(r.min), "min")}${c(r.pts, "pts")}${c(r.reb, "reb")}${c(r.ast, "ast")}${c(r.stl, "stl")}${c(r.blk, "blk")}${c(r.tpm, "tpm")}${c(r.to, "to", true)}
         <td>${r.fgm}-${r.fga}</td><td>${r.ftm}-${r.fta}</td></tr>`).join("");
@@ -1125,7 +1135,15 @@ async function fillCardStats(id) {
           <tr class="avg-row"><td class="left" colspan="3">Season avg · ${me.a.gp} game${me.a.gp === 1 ? "" : "s"}</td><td class="fp">${n1(me.fp)}</td><td>${n1(me.a.min)}</td><td>${n1(me.a.pts)}</td><td>${n1(me.a.reb)}</td><td>${n1(me.a.ast)}</td><td>${n1(me.a.stl)}</td><td>${n1(me.a.blk)}</td><td>${n1(me.a.tpm)}</td><td>${n1(me.a.to)}</td><td>${pctf(me.a.fgp)}%</td><td>${pctf(me.a.ftp)}%</td></tr>
           ${logRows}
         </tbody></table></div>
-      <div class="ch-note muted">FPTS uses your league's scoring. Green and red cells mark games well above or below this player's ${esc(label)} average.</div>`;
+      <div class="ch-note muted">FPTS uses your league's scoring. Green and red cells mark games well above or below this player's ${esc(label)} average.</div>
+      <span class="eyebrow career-title">Career · per game</span>
+      <div class="tbl-wrap stat-tbl gl career"><table>
+        <thead>
+          <tr class="grp"><th colspan="2"></th><th colspan="2" class="g-fan">Fantasy</th><th colspan="8">Per game</th><th colspan="2">Shooting</th></tr>
+          <tr><th class="left">Season</th><th>GP</th><th class="g-fan">FPTS</th><th class="g-fan">FP/G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>3PM</th><th>TO</th><th>FG%</th><th>FT%</th></tr>
+        </thead>
+        <tbody>${careerRows}</tbody></table></div>
+      <div class="ch-note muted">Green and red cells mark seasons well above or below this player's average across these seasons.</div>`;
     $("glTabs").onclick = e => { const b = e.target.closest("button[data-season]"); if (!b) return; label = S.cardSeason = b.dataset.season; render(); };
     $("glTabs").querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
   };
