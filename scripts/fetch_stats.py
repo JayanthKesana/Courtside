@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -36,7 +37,8 @@ ET = ZoneInfo("America/New_York")
 
 PAST_SEASONS = 2                    # seasons kept besides the current one
 MAX_SECONDS_PER_RUN = 9 * 60        # keep working until this much time has passed
-PAUSE = 0.2                         # seconds between ESPN requests, to be polite
+PAUSE = 0.2                         # seconds between ESPN requests, per worker, to be polite
+WORKERS = 4                         # box scores fetched in parallel
 
 # One game line, in this order, everywhere
 LINE = ["min", "pts", "reb", "ast", "stl", "blk", "to", "fgm", "fga", "tpm", "tpa",
@@ -80,7 +82,8 @@ def seasons_for(today: date) -> list[dict]:
     for k in range(PAST_SEASONS + 1):
         sy = y - k
         out.append({"label": f"{sy}-{str(sy + 1)[2:]}", "start": date(sy, 10, 1),
-                    "end": today if k == 0 else date(sy + 1, 6, 30), "current": k == 0})
+                    # the regular season ends in mid-April; nothing after April counts
+                    "end": today if k == 0 else date(sy + 1, 4, 30), "current": k == 0})
     return out
 
 
@@ -149,9 +152,19 @@ def crawl(st: dict, end: date, deadline: float, on_game) -> None:
     """Walk scoreboard days from st['cursor'] to end, fetching unprocessed finished games."""
     day = date.fromisoformat(st["cursor"])
     done = set(st["done"])
+    pool = ThreadPoolExecutor(max_workers=WORKERS)
+    try:
+        _crawl_days(st, day, done, end, deadline, on_game, pool)
+    finally:
+        pool.shutdown()
+
+
+def _crawl_days(st, day, done, end, deadline, on_game, pool) -> None:
+    # st["cursor"]/st["done"] are updated as each day finishes, so an error keeps all earlier days
     while day <= end and time.time() < deadline:
         board = get_json(f"{SITE}/scoreboard?dates={day:%Y%m%d}&limit=50")
         all_final = True
+        todo = []
         for ev in board.get("events") or []:
             if (ev.get("season") or {}).get("type") != 2:      # regular season only
                 continue
@@ -162,18 +175,18 @@ def crawl(st: dict, end: date, deadline: float, on_game) -> None:
                 all_final = False
                 continue
             eid = str(ev.get("id"))
-            if eid in done:
-                continue
-            if time.time() >= deadline:
-                all_final = False
-                break
-            on_game(day, get_json(f"{SITE}/summary?event={eid}"))
+            if eid not in done:
+                todo.append(eid)
+        # fetch the day's box scores in parallel, then record them in order
+        docs = list(pool.map(lambda e: get_json(f"{SITE}/summary?event={e}"), todo))
+        for eid, doc in zip(todo, docs):
+            on_game(day, doc)
             done.add(eid)
+        st["done"] = sorted(done)
         if not all_final:
             break
         day += timedelta(days=1)
-    st["cursor"] = day.isoformat()
-    st["done"] = sorted(done)
+        st["cursor"] = day.isoformat()
 
 
 def main() -> int:
@@ -213,7 +226,10 @@ def main() -> int:
                 if not any(r[0] == day.isoformat() for r in rows):
                     rows.append([day.isoformat(), line["opp"], line["ha"], line["res"]] + [line[k] for k in LINE])
 
-        crawl(st, s["end"], deadline, on_game)
+        try:
+            crawl(st, s["end"], deadline, on_game)
+        except Exception as e:              # keep everything collected so far; finish next run
+            print(f"{label}: stopped early ({type(e).__name__}: {e}); progress saved, continues next run")
         if s["current"]:
             # re-check yesterday every run in case late games finished after midnight
             st["cursor"] = min(date.fromisoformat(st["cursor"]), today - timedelta(days=1)).isoformat()
