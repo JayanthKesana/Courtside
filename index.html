@@ -310,7 +310,7 @@ tr.in .rank { color: var(--fg); }
 .ndot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--away); margin-left: 6px; vertical-align: 2px; box-shadow: 0 0 0 3px var(--away-soft); }
 dialog#pcard {
   padding: 0; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); color: var(--fg);
-  width: min(560px, calc(100vw - 24px)); max-height: min(86vh, 900px); overflow: hidden;
+  width: min(780px, calc(100vw - 24px)); max-height: min(86vh, 900px); overflow: hidden;
   box-shadow: 0 30px 80px rgba(0,0,0,.45);
 }
 dialog#pcard::backdrop { background: rgba(6, 9, 20, .62); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
@@ -344,19 +344,20 @@ dialog#pcard::backdrop { background: rgba(6, 9, 20, .62); backdrop-filter: blur(
 .stat-tbl tbody th { font-family: var(--font-body); font-weight: 600; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--fg); background: none; white-space: nowrap; }
 .stat-tbl .hi, .ptbl .hi { color: var(--home); font-weight: 600; }
 .stat-tbl .w { color: var(--win); } .stat-tbl .l { color: var(--bad); }
-.ch-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.gl-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
-.seg button { border: 0; background: none; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
-.seg button[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
-.chart { width: 100%; height: auto; display: block; }
-.ch-grid { stroke: var(--line); stroke-width: 1; }
-.ch-ax { fill: var(--muted); font: 11px var(--font-mono); }
-.ch-bar { fill: var(--home); opacity: .78; }
-.ch-bar.last { opacity: 1; }
-.ch-bar:hover { opacity: 1; }
-.ch-miss { fill: var(--muted); opacity: .6; }
-.ch-avg { stroke: var(--away); stroke-width: 1.5; stroke-dasharray: 5 4; }
-.ch-avgl { fill: var(--away); font: 600 11px var(--font-body); }
+.seg button { border: 0; background: none; border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.seg button[aria-selected="true"] { background: var(--home); color: #fff; }
+.gl { max-height: 420px; overflow: auto; }
+.gl thead th { position: sticky; z-index: 1; }
+.gl thead tr.grp th { top: 0; height: 24px; font-size: 10.5px; text-align: center; color: var(--fg); letter-spacing: .1em; border-bottom: 0; padding-block: 4px 0; }
+.gl thead tr:not(.grp) th { top: 24px; }
+.gl td { white-space: nowrap; }
+.gl td.fp { background: color-mix(in srgb, var(--home) 12%, transparent); color: var(--fg); font-weight: 700; }
+.gl thead .g-fan { background: color-mix(in srgb, var(--home) 18%, var(--surface-2)); }
+.gl td[data-h="g"] { background: color-mix(in srgb, var(--win) var(--h), transparent); }
+.gl td[data-h="b"] { background: color-mix(in srgb, var(--bad) var(--h), transparent); }
+.gl .avg-row td { background: var(--surface-2); font-weight: 600; border-bottom: 2px solid var(--line); }
 .ch-note { font-size: 12px; margin-top: -4px; }
 
 /* ---------- players tab ---------- */
@@ -987,174 +988,124 @@ async function viewTrending(v) {
 }
 
 /* =====================================================================
-   Stats: box scores collected by the GitHub Action (stats.json, logs.json)
-   plus Sleeper's official weekly matchup points for the league charts.
+   Stats: ESPN box scores collected by the GitHub Action.
+   stats.json has season totals; stats/<season>.json has every game line.
    ===================================================================== */
 const LINE = ["min", "pts", "reb", "ast", "stl", "blk", "to", "fgm", "fga", "tpm", "tpa", "ftm", "fta", "oreb", "dreb", "pf", "pm"];
-S.stats = null; S.logs = null; S.statsAt = 0; S.logsAt = 0;
+S.stats = null; S.statsAt = 0; S.logs = {};
 async function loadStats() {
   if (S.stats && Date.now() - S.statsAt < 10 * 60e3) return S.stats;
   try {
     const r = await fetch(`stats.json?t=${Math.floor(Date.now() / 60e3)}`, { cache: "no-store" });
     if (!r.ok) throw 0;
     const d = await r.json();
-    const unpack = sec => { const o = {}; for (const [pid, row] of Object.entries(sec?.players || {})) o[pid] = Object.fromEntries(d.cols.map((c, i) => [c, row[i]])); return o; };
-    S.stats = { cur: unpack(d.cur), last: unpack(d.last), curLabel: d.cur?.label, lastLabel: d.last?.label, lastComplete: d.last?.complete, lastGames: d.last?.games, updated: d.updated };
+    if (!Array.isArray(d.seasons)) throw 0;                 // older file format: wait for the Action
+    const seasons = d.seasons.map(se => ({
+      label: se.label, current: se.current, complete: se.complete,
+      players: Object.fromEntries(Object.entries(se.players || {}).map(([pid, row]) => [pid, Object.fromEntries(d.cols.map((c, i) => [c, row[i]]))]))
+    }));
+    S.stats = { seasons, updated: d.updated };
     S.statsAt = Date.now();
-  } catch { if (!S.stats) S.stats = { missing: true, cur: {}, last: {} }; }
+  } catch { if (!S.stats) S.stats = { missing: true, seasons: [] }; }
   return S.stats;
 }
-async function loadLogs() {
-  if (S.logs && Date.now() - S.logsAt < 10 * 60e3) return S.logs;
+/* Seasons worth showing: the current one, plus past seasons once fully collected */
+const shownSeasons = () => (S.stats?.seasons || []).filter(se => se.current || se.complete);
+const seasonByLabel = l => (S.stats?.seasons || []).find(se => se.label === l);
+async function loadLogs(label) {
+  const c = S.logs[label];
+  const se = seasonByLabel(label);
+  if (c && (!se?.current || Date.now() - c.at < 10 * 60e3)) return c.players;
   try {
-    const r = await fetch(`logs.json?t=${Math.floor(Date.now() / 60e3)}`, { cache: "no-store" });
+    const r = await fetch(`stats/${encodeURIComponent(label)}.json?t=${se?.current ? Math.floor(Date.now() / 60e3) : "x"}`);
     if (!r.ok) throw 0;
     const d = await r.json();
-    const out = {};
+    const players = {};
     for (const [pid, rows] of Object.entries(d.players || {}))
-      out[pid] = rows.map(row => Object.fromEntries(d.cols.map((c, i) => [c, row[i]]))).sort((a, b) => a.d < b.d ? -1 : 1);
-    S.logs = out; S.logsAt = Date.now();
-  } catch { if (!S.logs) S.logs = {}; }
-  return S.logs;
+      players[pid] = rows.map(row => Object.fromEntries(d.cols.map((col, i) => [col, row[i]])));
+    S.logs[label] = { at: Date.now(), players };
+  } catch { if (!c) S.logs[label] = { at: Date.now(), players: {} }; }
+  return S.logs[label].players;
 }
 
-/* Fantasy points from a stat line, using this league's own scoring settings */
-function scoreVals(x, perGame) {
-  const v = { ...x };
-  v.fgmi = (x.fga || 0) - (x.fgm || 0); v.ftmi = (x.fta || 0) - (x.ftm || 0); v.tpmi = (x.tpa || 0) - (x.tpm || 0);
-  if (perGame) {
-    const tens = ["pts", "reb", "ast", "stl", "blk"].filter(k => (x[k] || 0) >= 10).length;
-    v.dd = tens >= 2 ? 1 : 0; v.td = tens >= 3 ? 1 : 0; v.qd = tens >= 4 ? 1 : 0;
-    v.bonus_pt_40p = x.pts >= 40 ? 1 : 0; v.bonus_pt_50p = x.pts >= 50 ? 1 : 0;
-    v.bonus_reb_20p = x.reb >= 20 ? 1 : 0; v.bonus_ast_15p = x.ast >= 15 ? 1 : 0;
-  }
-  return v;
-}
-function fpts(x, perGame = true) {
+/* Fantasy points for one game line, using this league's own scoring settings */
+function fpts(x) {
   const sc = S.league?.scoring_settings || {};
-  const v = scoreVals(x, perGame);
+  const tens = ["pts", "reb", "ast", "stl", "blk"].filter(k => (x[k] || 0) >= 10).length;
+  const v = { ...x,
+    fgmi: (x.fga || 0) - (x.fgm || 0), ftmi: (x.fta || 0) - (x.ftm || 0), tpmi: (x.tpa || 0) - (x.tpm || 0),
+    dd: tens >= 2 ? 1 : 0, td: tens >= 3 ? 1 : 0, qd: tens >= 4 ? 1 : 0,
+    bonus_pt_40p: x.pts >= 40 ? 1 : 0, bonus_pt_50p: x.pts >= 50 ? 1 : 0, bonus_reb_20p: x.reb >= 20 ? 1 : 0, bonus_ast_15p: x.ast >= 15 ? 1 : 0 };
   let t = 0, hit = false;
   for (const [k, w] of Object.entries(sc)) if (typeof v[k] === "number" && typeof w === "number") { t += v[k] * w; hit = true; }
   return hit ? Math.round(t * 100) / 100 : null;
 }
-/* Season summary for one player: per-game averages + FP/G */
-function seasonLine(pid, which) {
-  const tot = S.stats?.[which]?.[pid];
+/* Per-game averages for one player in one season. Fantasy points come from the game log (exact). */
+function seasonLine(pid, label) {
+  const tot = seasonByLabel(label)?.players?.[pid];
   if (!tot || !tot.gp) return null;
   const g = tot.gp, per = k => (tot[k] || 0) / g;
-  let fp;
-  const logs = which === "cur" ? S.logs?.[pid] : null;
-  if (logs?.length) { const s = logs.reduce((a, r) => a + (fpts(r) || 0), 0); fp = s / logs.length; }
-  else { const f = fpts(tot, false); fp = f == null ? null : f / g; }
+  const games = S.logs[label]?.players?.[pid];
+  const fp = games?.length ? games.reduce((a, r) => a + (fpts(r) || 0), 0) / games.length : null;
   return {
     gp: g, fpg: fp, fpt: fp == null ? null : fp * g,
     min: per("min"), pts: per("pts"), reb: per("reb"), ast: per("ast"), stl: per("stl"), blk: per("blk"), tpm: per("tpm"), to: per("to"),
-    fgp: tot.fga ? tot.fgm / tot.fga : null, ftp: tot.fta ? tot.ftm / tot.fta : null, tpp: tot.tpa ? tot.tpm / tot.tpa : null
+    fgp: tot.fga ? tot.fgm / tot.fga : null, ftp: tot.fta ? tot.ftm / tot.fta : null
   };
 }
 const n1 = v => v == null ? "—" : v.toFixed(1);
 const pctf = v => v == null ? "—" : (v * 100).toFixed(1);
 
-/* Official weekly fantasy points from Sleeper matchups: {week: {pid: pts}} */
-const HIST = {};
-async function leagueHistory(lid, isCurrent) {
-  if (HIST[lid] && (!isCurrent || Date.now() - HIST[lid].at < 10 * 60e3)) return HIST[lid].weeks;
-  const key = `cs_hist_${lid}`;
-  if (!isCurrent) { const c = store.get(key); if (c) { HIST[lid] = { at: Date.now(), weeks: c }; return c; } }
-  let last;
-  if (isCurrent) last = S.week;
-  else {
-    const L = await get(`/league/${lid}`).catch(() => null);
-    if (!L) return {};
-    last = Number(L.settings?.last_scored_leg) || ((L.settings?.playoff_week_start || 21) + 2);
-  }
-  const weeks = {};
-  const nums = Array.from({ length: last }, (_, i) => i + 1);
-  for (let i = 0; i < nums.length; i += 6) {
-    await Promise.all(nums.slice(i, i + 6).map(async w => {
-      const mu = (isCurrent && S.matchups[w]) || await get(`/league/${lid}/matchups/${w}`).catch(() => []);
-      const m = {};
-      (mu || []).forEach(e => Object.entries(e.players_points || {}).forEach(([pid, pts]) => { m[pid] = pts; }));
-      if (Object.keys(m).length) weeks[w] = m;
-    }));
-  }
-  HIST[lid] = { at: Date.now(), weeks };
-  if (!isCurrent && Object.keys(weeks).length) store.set(key, weeks);
-  return weeks;
+/* ---------- player card: NFL-style game logs ---------- */
+S.cardSeason = null;
+/* Shade a cell by how far this game was from the player's season average.
+   Green = better than usual, red = worse. For turnovers, fewer is better. */
+function heat(val, avg, invert) {
+  if (val == null || avg == null || avg <= 0.4) return "";
+  const r = (val - avg) / Math.max(avg, 1);
+  if (Math.abs(r) < 0.15) return "";
+  const strength = Math.min(1, Math.abs(r) / 0.6);
+  const good = invert ? r < 0 : r > 0;
+  return ` style="--h:${(8 + strength * 22).toFixed(0)}%" data-h="${good ? "g" : "b"}"`;
 }
-
-/* Bar chart, drawn to scale. points: [{label, y (number|null), title}] */
-function barChart(points, avgLabel) {
-  const W = 540, H = 200, pl = 36, pr = 12, pt = 16, pb = 28;
-  const vals = points.map(p => p.y).filter(v => v != null);
-  if (!vals.length) return `<div class="pc-empty">No games to chart yet.</div>`;
-  const max = Math.max(...vals, 1);
-  const mag = Math.pow(10, Math.floor(Math.log10(max)));
-  const yMax = Math.ceil(max / (mag / 2)) * (mag / 2);
-  const y = v => pt + (H - pt - pb) * (1 - v / yMax);
-  const n = points.length, slot = (W - pl - pr) / n, bw = Math.max(3, Math.min(26, slot * 0.68));
-  const every = Math.ceil(n / 12);
-  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-  let g = "";
-  [0, yMax / 2, yMax].forEach(t => {
-    g += `<line x1="${pl}" x2="${W - pr}" y1="${y(t)}" y2="${y(t)}" class="ch-grid"/><text x="${pl - 6}" y="${y(t) + 4}" class="ch-ax" text-anchor="end">${Math.round(t)}</text>`;
-  });
-  points.forEach((p, i) => {
-    const cx = pl + slot * i + slot / 2;
-    if (p.y == null) g += `<circle cx="${cx}" cy="${y(0) - 3}" r="2" class="ch-miss"><title>${esc(p.title)}</title></circle>`;
-    else {
-      const top = y(Math.max(0, p.y)), last = i === n - 1;
-      g += `<rect x="${cx - bw / 2}" y="${top}" width="${bw}" height="${Math.max(1, y(0) - top)}" rx="${Math.min(4, bw / 3)}" class="ch-bar${last ? " last" : ""}"><title>${esc(p.title)}</title></rect>`;
-    }
-    if (i % every === 0 || i === n - 1) g += `<text x="${cx}" y="${H - 9}" class="ch-ax" text-anchor="middle">${esc(p.label)}</text>`;
-  });
-  g += `<line x1="${pl}" x2="${W - pr}" y1="${y(avg)}" y2="${y(avg)}" class="ch-avg"/><text x="${W - pr}" y="${y(avg) - 5}" class="ch-avgl" text-anchor="end">${esc(avgLabel)} ${avg.toFixed(1)}</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="Fantasy points chart">${g}</svg>`;
-}
-
-/* ---------- player card: stats section ---------- */
 async function fillCardStats(id) {
   const box = $("pcStats"); if (!box) return;
-  box.innerHTML = `<span class="eyebrow">Stats</span>${skeleton(2)}`;
-  await Promise.all([loadStats(), loadLogs()]);
+  box.innerHTML = `<span class="eyebrow">Game logs</span>${skeleton(2)}`;
+  await loadStats();
+  const seasons = shownSeasons();
   if ($("pcard").dataset.open !== id || !$("pcStats")) return;
-  const st = S.stats;
-  if (st.missing) { box.innerHTML = `<span class="eyebrow">Stats</span><div class="pc-empty">No stats file yet. Box scores come from <code>stats.json</code>, which the GitHub Action builds after its next run.</div>`; return; }
-  const cur = seasonLine(id, "cur"), last = seasonLine(id, "last");
-  const row = (label, s, note) => s ? `<tr><th scope="row">${esc(label)}${note ? ` <span class="muted">${note}</span>` : ""}</th><td>${s.gp}</td><td class="hi">${n1(s.fpg)}</td><td>${n1(s.min)}</td><td>${n1(s.pts)}</td><td>${n1(s.reb)}</td><td>${n1(s.ast)}</td><td>${n1(s.stl)}</td><td>${n1(s.blk)}</td><td>${n1(s.tpm)}</td><td>${n1(s.to)}</td><td>${pctf(s.fgp)}</td><td>${pctf(s.ftp)}</td></tr>`
-    : `<tr><th scope="row">${esc(label)}</th><td colspan="12" class="muted left">No games${which(label)}</td></tr>`;
-  const which = () => " yet";
-  const table = `<div class="tbl-wrap stat-tbl"><table><thead><tr><th>Season</th><th>GP</th><th>FP/G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>3PM</th><th>TO</th><th>FG%</th><th>FT%</th></tr></thead><tbody>
-    ${row(st.curLabel || "This season", cur)}${st.lastComplete ? row(st.lastLabel || "Last season", last) : ""}</tbody></table></div>`;
-
-  const logs = S.logs[id] || [];
-  const games = logs.slice(-20).map(r => ({ label: r.d.slice(5).replace("-", "/"), y: fpts(r), title: `${r.d} ${r.ha === "H" ? "vs" : "@"} ${r.opp}: ${n1(fpts(r))} FP · ${r.pts} PTS ${r.reb} REB ${r.ast} AST` }));
-  const log = logs.slice(-10).reverse().map(r => `<tr><td>${esc(r.d.slice(5).replace("-", "/"))}</td><td>${r.ha === "H" ? "vs" : "@"} ${esc(r.opp)}</td><td class="left ${String(r.res).startsWith("W") ? "w" : "l"}">${esc(r.res)}</td><td class="hi">${n1(fpts(r))}</td><td>${Math.round(r.min)}</td><td>${r.pts}</td><td>${r.reb}</td><td>${r.ast}</td><td>${r.stl}</td><td>${r.blk}</td><td>${r.tpm}</td><td>${r.to}</td><td>${r.fgm}-${r.fga}</td></tr>`).join("");
-
-  box.innerHTML = `<span class="eyebrow">Season stats</span>${table}
-    <div class="ch-head"><span class="eyebrow">Fantasy points</span><div class="seg" role="tablist" id="chSeg">
-      <button type="button" data-ch="games" aria-selected="true">By game</button>
-      <button type="button" data-ch="wk-cur">By week · ${esc(st.curLabel || "this season")}</button>
-      ${S.league.previous_league_id ? `<button type="button" data-ch="wk-prev">By week · ${esc(st.lastLabel || "last season")}</button>` : ""}</div></div>
-    <div id="chBody">${barChart(games, "avg")}</div>
-    <div class="ch-note muted" id="chNote">Last ${games.length || 0} games, scored with your league's settings from box scores.</div>
-    ${log ? `<span class="eyebrow">Recent games</span><div class="tbl-wrap stat-tbl"><table><thead><tr><th>Date</th><th>Opp</th><th class="left">Result</th><th>FP</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>3PM</th><th>TO</th><th>FG</th></tr></thead><tbody>${log}</tbody></table></div>` : ""}`;
-
-  $("chSeg").onclick = async e => {
-    const b = e.target.closest("button[data-ch]"); if (!b) return;
-    $("chSeg").querySelectorAll("button").forEach(x => x.setAttribute("aria-selected", x === b));
-    const mode = b.dataset.ch;
-    if (mode === "games") { $("chBody").innerHTML = barChart(games, "avg"); $("chNote").textContent = `Last ${games.length} games, scored with your league's settings from box scores.`; return; }
-    $("chBody").innerHTML = skeleton(1);
-    const cur = mode === "wk-cur";
-    const lid = cur ? S.league.league_id : S.league.previous_league_id;
-    const weeks = await leagueHistory(lid, cur);
+  if (S.stats.missing || !seasons.length) {
+    box.innerHTML = `<span class="eyebrow">Game logs</span><div class="pc-empty">Box scores haven't been collected yet. They appear after the GitHub Action's next run.</div>`;
+    return;
+  }
+  // default to the newest season this player actually played in
+  const played = seasons.filter(se => se.players[id]?.gp);
+  let label = played.find(se => se.label === S.cardSeason)?.label || played[0]?.label || seasons[0].label;
+  const render = async () => {
+    const games = (await loadLogs(label))[id] || [];
     if ($("pcard").dataset.open !== id) return;
-    const nW = Math.max(0, ...Object.keys(weeks).map(Number));
-    const pts = Array.from({ length: nW }, (_, i) => { const w = i + 1, v = weeks[w]?.[id]; return { label: `W${w}`, y: v ?? null, title: v == null ? `Week ${w}: not on a roster in this league` : `Week ${w}: ${n1(v)} fantasy points` }; });
-    $("chBody").innerHTML = barChart(pts, "avg");
-    $("chNote").textContent = "Official weekly points from Sleeper. Dots mark weeks the player wasn't on a roster in this league.";
+    const s = seasonLine(id, label);
+    const tabs = seasons.map(se => `<button type="button" data-season="${esc(se.label)}" aria-selected="${se.label === label}">${esc(se.label)}</button>`).join("");
+    const avg = s && { fp: s.fpg, min: s.min, pts: s.pts, reb: s.reb, ast: s.ast, stl: s.stl, blk: s.blk, tpm: s.tpm, to: s.to };
+    const c = (v, k, inv, fmt = x => x, cls = "") => `<td${cls ? ` class="${cls}"` : ""}${heat(v, avg?.[k], inv)}>${v == null ? "—" : fmt(v)}</td>`;
+    const rows = [...games].reverse().map(r => `<tr><td class="left">${esc(r.d.slice(5).replace("-", "/"))}</td><td class="left">${r.ha === "H" ? "" : "@"}${esc(r.opp)}</td><td class="left ${String(r.res).startsWith("W") ? "w" : "l"}">${esc(r.res)}</td>
+        ${c(fpts(r), "fp", false, x => x.toFixed(1), "fp")}${c(Math.round(r.min), "min")}${c(r.pts, "pts")}${c(r.reb, "reb")}${c(r.ast, "ast")}${c(r.stl, "stl")}${c(r.blk, "blk")}${c(r.tpm, "tpm")}${c(r.to, "to", true)}
+        <td>${r.fgm}-${r.fga}</td><td>${r.ftm}-${r.fta}</td></tr>`).join("");
+    box.innerHTML = `<div class="gl-head"><span class="eyebrow">Game logs</span><div class="seg" id="glSeg">${tabs}</div></div>
+      ${s ? `<div class="tbl-wrap stat-tbl gl"><table>
+        <thead>
+          <tr class="grp"><th colspan="3"></th><th class="g-fan">Fantasy</th><th colspan="8">Box score</th><th colspan="2">Shooting</th></tr>
+          <tr><th class="left">Date</th><th class="left">Opp</th><th class="left">Result</th><th class="g-fan">FPTS</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>3PM</th><th>TO</th><th>FG</th><th>FT</th></tr>
+        </thead>
+        <tbody>
+          <tr class="avg-row"><td class="left" colspan="3">Season avg · ${s.gp} game${s.gp === 1 ? "" : "s"}</td><td class="fp">${n1(s.fpg)}</td><td>${n1(s.min)}</td><td>${n1(s.pts)}</td><td>${n1(s.reb)}</td><td>${n1(s.ast)}</td><td>${n1(s.stl)}</td><td>${n1(s.blk)}</td><td>${n1(s.tpm)}</td><td>${n1(s.to)}</td><td>${pctf(s.fgp)}%</td><td>${pctf(s.ftp)}%</td></tr>
+          ${rows}
+        </tbody></table></div>
+        <div class="ch-note muted">FPTS uses your league's scoring. Green and red cells mark games well above or below this player's ${esc(label)} average.</div>`
+      : `<div class="pc-empty">${esc(P(id)?.n || "This player")} didn't play in ${esc(label)}.</div>`}`;
+    $("glSeg").onclick = e => { const b = e.target.closest("button[data-season]"); if (!b) return; label = S.cardSeason = b.dataset.season; render(); };
   };
+  await render();
 }
 
 /* ---------- Players tab: Sleeper-style search ---------- */
@@ -1163,11 +1114,12 @@ const POS = ["ALL", "PG", "SG", "SF", "PF", "C", "G", "F"];
 const SORTS = [["fpg", "Fantasy pts per game"], ["fpt", "Total fantasy pts"], ["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["stl", "Steals"], ["blk", "Blocks"], ["tpm", "3-pointers made"], ["min", "Minutes"], ["trend", "Trending adds (24 hr)"], ["name", "Name"]];
 async function viewPlayers(v) {
   v.innerHTML = skeleton(6);
-  await Promise.all([loadStats(), loadLogs(), loadTrending().catch(() => {})]);
+  await Promise.all([loadStats(), loadTrending().catch(() => {})]);
+  const st = S.stats, seasons = shownSeasons();
+  // This season is the default; past seasons are offered once fully collected.
+  if (!seasons.some(se => se.label === S.pf.season)) S.pf.season = seasons[0]?.label || null;
+  if (S.pf.season) await loadLogs(S.pf.season);
   if (S.tab !== "players") return;
-  const st = S.stats;
-  // This season is the default. Last season is offered only once it's fully collected.
-  if (!S.pf.season || (S.pf.season === "last" && !st.lastComplete)) S.pf.season = "cur";
   const teams = [...new Set(Object.values(S.players).map(p => p.t).filter(Boolean))].sort();
   const f = S.pf;
   v.innerHTML = `<div class="panel">
@@ -1186,8 +1138,7 @@ async function viewPlayers(v) {
           ${[["all", "Everyone"], ["healthy", "Healthy only"], ["noout", "Hide Out"]].map(([k, l]) => `<option value="${k}" ${f.health === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
         <label class="pf-sel"><span class="eyebrow">Sort by</span><select class="ctl" id="pfSort">${SORTS.map(([k, l]) => `<option value="${k}" ${f.sort === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
         <label class="pf-sel"><span class="eyebrow">Stats from</span><select class="ctl" id="pfSeason">
-          <option value="cur" ${f.season === "cur" ? "selected" : ""}>${esc(st.curLabel || "This season")}</option>
-          ${st.lastComplete ? `<option value="last" ${f.season === "last" ? "selected" : ""}>${esc(st.lastLabel || "Last season")}</option>` : ""}</select></label>
+          ${seasons.map(se => `<option value="${esc(se.label)}" ${f.season === se.label ? "selected" : ""}>${esc(se.label)}</option>`).join("") || `<option value="">No stats yet</option>`}</select></label>
       </div>
     </div>
     <div class="card"><div class="tbl-wrap"><table class="ptbl"><thead><tr><th class="n">#</th><th>Player</th><th>Fantasy team</th><th class="n">GP</th><th class="n">FP/G</th><th class="n">MIN</th><th class="n">PTS</th><th class="n">REB</th><th class="n">AST</th><th class="n">STL</th><th class="n">BLK</th><th class="n">3PM</th><th class="n">TO</th><th class="n">FG%</th></tr></thead><tbody id="pfBody"></tbody></table></div>
@@ -1197,7 +1148,8 @@ async function viewPlayers(v) {
   const rerender = () => renderPlayerRows();
   $("pfQ").oninput = e => { f.q = e.target.value; f.limit = 50; rerender(); };
   $("pfPos").onclick = e => { const b = e.target.closest("button"); if (!b) return; f.pos = b.dataset.pos; f.limit = 50; $("pfPos").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); rerender(); };
-  [["pfAvail", "avail"], ["pfTeam", "team"], ["pfHealth", "health"], ["pfSort", "sort"], ["pfSeason", "season"]].forEach(([id, k]) => $(id).onchange = e => { f[k] = e.target.value; f.limit = 50; rerender(); });
+  [["pfAvail", "avail"], ["pfTeam", "team"], ["pfHealth", "health"], ["pfSort", "sort"]].forEach(([id, k]) => $(id).onchange = e => { f[k] = e.target.value; f.limit = 50; rerender(); });
+  $("pfSeason").onchange = async e => { f.season = e.target.value; f.limit = 50; $("pfBody").innerHTML = `<tr><td colspan="14" class="muted">Loading ${esc(f.season)}…</td></tr>`; await loadLogs(f.season); rerender(); };
   rerender();
 }
 function renderPlayerRows() {
