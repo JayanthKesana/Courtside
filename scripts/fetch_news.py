@@ -34,10 +34,11 @@ UA = "Mozilla/5.0 (compatible; CourtsideNewsBot/1.0; +https://github.com)"
 
 SOURCES = {
     # name: (url, parser name, display label)
+    # ESPN's general NBA news turned out to be previews and features, not player updates,
+    # so RotoWire's player-news feed is the only source for now. parse_espn stays available.
     "rotowire": ("https://www.rotowire.com/rss/news.php?sport=NBA", "rss", "RotoWire"),
-    "espn_fantasy": ("https://site.api.espn.com/apis/fantasy/v2/games/fba/news/players?limit=200", "espn", "ESPN"),
-    "espn_nba": ("https://site.api.espn.com/apis/site/v2/sports/basketball/nba/news?limit=100", "espn", "ESPN"),
 }
+INDEX_VERSION = 2
 
 
 # ---------------------------------------------------------------- helpers
@@ -91,7 +92,7 @@ def item_id(src: str, title: str, ts: int | None) -> str:
 # ---------------------------------------------------------------- player index
 def load_index() -> dict:
     cached = json.loads(INDEX_FILE.read_text()) if INDEX_FILE.exists() else None
-    if cached and time.time() - cached.get("at", 0) < INDEX_TTL:
+    if cached and cached.get("v") == INDEX_VERSION and time.time() - cached.get("at", 0) < INDEX_TTL:
         return cached
     try:
         raw = json.loads(fetch("https://api.sleeper.app/v1/players/nba", timeout=60))
@@ -103,6 +104,9 @@ def load_index() -> dict:
     names: dict[str, str] = {}
     rank: dict[str, int] = {}
     for pid, p in raw.items():
+        # Sleeper's list also has team entries and long-retired players; skip both
+        if not pid.isdigit() or not (p.get("team") or p.get("active")):
+            continue
         full = p.get("full_name") or " ".join(x for x in (p.get("first_name"), p.get("last_name")) if x)
         key = norm(full)
         if not key or " " not in key:
@@ -110,7 +114,7 @@ def load_index() -> dict:
         score = (2 if p.get("team") else 0) + (1 if p.get("active") else 0)
         if score > rank.get(key, -1):      # on name clashes, prefer the active player on a team
             names[key], rank[key] = pid, score
-    idx = {"at": int(time.time()), "names": names}
+    idx = {"v": INDEX_VERSION, "at": int(time.time()), "names": names}
     INDEX_FILE.parent.mkdir(parents=True, exist_ok=True)
     INDEX_FILE.write_text(json.dumps(idx, separators=(",", ":"), sort_keys=True))
     return idx
@@ -137,7 +141,9 @@ class Matcher:
 def parse_rss(data: bytes, src: str, label: str, match: Matcher) -> list[tuple[str, dict]]:
     out = []
     root = ET.fromstring(data)
-    for it in root.iter("item"):
+    raw_items = list(root.iter("item"))
+    print(f"{src}: feed returned {len(raw_items)} items")
+    for it in raw_items:
         title = clean(it.findtext("title") or "")
         desc = clean(it.findtext("description") or "")
         link = (it.findtext("link") or "").strip()
@@ -211,8 +217,13 @@ def main() -> int:
             print(f"{name}: FAILED {e}", file=sys.stderr)
 
     cutoff = int(time.time() * 1000) - KEEP_DAYS * 864e5
+    labels = {label for _, _, label in SOURCES.values()}
+    valid = set(match.names.values())
     merged = {}
     for pid, items in players.items():
+        if pid not in valid:          # drops items saved against team entries or retired players
+            continue
+        items = [it for it in items if it.get("src") in labels]   # drops items from retired sources
         seen, keep = set(), []
         for it in sorted(items, key=lambda x: x.get("ts") or 0, reverse=True):
             # the same story often appears in two feeds; keep the first copy
