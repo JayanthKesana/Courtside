@@ -439,7 +439,7 @@ tr:has(+ .note-row) td { border-bottom: 0; }
     <div class="head-actions" id="headActions" hidden>
       <select class="ctl" id="weekSel" aria-label="Week"></select>
       <select class="ctl" id="teamSel" aria-label="Your team"></select>
-      <label class="toggle" for="autoRef"><input type="checkbox" id="autoRef"><span class="sw"></span>Live</label>
+      <label class="toggle" for="autoRef"><input type="checkbox" id="autoRef" checked><span class="sw"></span>Live</label>
       <button class="ctl" id="refreshBtn">Refresh</button>
       <button class="ctl" id="changeBtn">Switch league</button>
     </div>
@@ -735,6 +735,7 @@ function buildHeader() {
 /* ---------- data refresh ---------- */
 async function refresh() {
   const id = S.league.league_id;
+  S.lastRefresh = Date.now();
   $("foot").innerHTML = `<span class="muted">Updating…</span>`;
   try {
     const [rosters, mu] = await Promise.all([get(`/league/${id}/rosters`), get(`/league/${id}/matchups/${S.week}`)]);
@@ -1258,19 +1259,23 @@ document.addEventListener("click", e => {
 }, true);
 $("pcard").addEventListener("click", e => { if (e.target === $("pcard")) $("pcard").close(); });
 $("changeBtn").onclick = () => {
-  store.del("cs_league"); clearInterval(S.timer); $("autoRef").checked = false;
+  store.del("cs_league");
   $("main").hidden = true; $("headActions").hidden = true; $("leagueMeta").hidden = true;
   $("setup").hidden = false; $("leaguePick").innerHTML = ""; $("setupMsg").innerHTML = "";
 };
-$("autoRef").onchange = e => {
-  clearInterval(S.timer);
-  if (e.target.checked) { S.timer = setInterval(() => { if (!document.hidden) refresh(); }, 60000); refresh(); }
-  else refresh();
-};
+/* Live updates: on by default, refresh every minute while the page is visible.
+   Turning it off is remembered on this device. */
+const liveOn = () => $("autoRef").checked && S.league && !$("main").hidden;
+$("autoRef").onchange = e => { store.set("cs_live", e.target.checked); if (S.league) refresh(); };
+setInterval(() => { if (liveOn() && !document.hidden) refresh(); }, 60000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && liveOn() && Date.now() - (S.lastRefresh || 0) > 60000) refresh();
+});
 
 /* ---------- boot ---------- */
 (async function boot() {
   try { S.tab = localStorage.getItem("cs_tab") || "matchup"; } catch {}
+  if (store.get("cs_live") === false) $("autoRef").checked = false;
   const u = store.get("cs_user"); if (u?.name) $("userIn").value = u.name;
   const saved = store.get("cs_league");
   if (saved?.leagueId) await openLeague(saved.leagueId, saved.userId);
