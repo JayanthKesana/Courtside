@@ -823,7 +823,7 @@ function viewMatchup(v) {
   if (b && isMe(b.roster_id)) [a, b] = [b, a];
   const pa = Number(a.points) || 0, pb = Number(b?.points) || 0;
   const slots = starterSlots();
-  const rowsFor = m => (m?.starters || []).map((pid, i) => ({ pid, pts: Number(m.players_points?.[pid] ?? m.starters_points?.[i] ?? 0) }));
+  const rowsFor = m => (m?.starters || []).map((pid, i) => ({ pid, pts: Number(m.starters_points?.[i] ?? 0) }));
   const sa = rowsFor(a), sb = rowsFor(b);
   const topA = Math.max(0, ...sa.map(r => r.pts)), topB = Math.max(0, ...sb.map(r => r.pts));
   const cell = (r, right, top, bench) => {
