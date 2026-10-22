@@ -1,10 +1,16 @@
 name: Record lineups
 
-# Every 5 minutes (GitHub's shortest schedule; runs can start a few minutes late).
-# Most runs find no live game and finish in seconds without committing anything.
+# GitHub's schedule is best-effort: "every 5 minutes" often turns into hours between runs.
+# So this job doesn't depend on it for timing. Once started, it loops by itself every
+# 4 minutes for as long as games are live or about to start (scripts/game_window.py),
+# then stops. The schedule below only needs to start a run sometime before tip-off.
+#
+# GitHub-hosted jobs can run at most 6 hours, so a run stops after ~5h40m. Any scheduled
+# run that fires meanwhile waits in the queue (see concurrency) and takes over right away,
+# so a long game day is covered by back-to-back runs.
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "7,37 * * * *"   # off the top of the hour, when GitHub's queue is busiest
   workflow_dispatch:
 
 permissions:
@@ -17,27 +23,34 @@ concurrency:
 jobs:
   record:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 350
+    env:
+      LEAGUE_ID: "1413299628866105344"
     steps:
       - uses: actions/checkout@v5
 
-      - name: Record lineups
-        run: python3 scripts/record_lineups.py
-        env:
-          LEAGUE_ID: "1413299628866105344"
-
-      - name: Commit changes
+      - name: Record lineups while games are on
         run: |
+          set +e
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add lineups
-          if git diff --cached --quiet; then
-            echo "Nothing new"
-            exit 0
-          fi
-          git commit -m "Record lineups"
-          for i in 1 2 3; do
-            git pull --rebase --autostash && git push && exit 0
-            sleep 5
+          stop_at=$((SECONDS + 340 * 60))
+          quiet=0
+          while :; do
+            python3 scripts/record_lineups.py
+            git add lineups
+            if ! git diff --cached --quiet; then
+              git commit -q -m "Record lineups"
+              for i in 1 2 3; do
+                git pull -q --rebase --autostash && git push -q && break
+                sleep 5
+              done
+            fi
+            # Stop after two quiet checks in a row: the extra pass saves the scores
+            # of a game that ended just before the first quiet check.
+            if python3 scripts/game_window.py; then quiet=0; else quiet=$((quiet + 1)); fi
+            [ "$quiet" -ge 2 ] && break
+            [ "$SECONDS" -ge "$stop_at" ] && break
+            sleep 240
           done
-          exit 1
+          exit 0

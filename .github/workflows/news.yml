@@ -1,8 +1,15 @@
 name: Update player news and stats
 
+# GitHub's schedule is best-effort: "every 10 minutes" has been running about every 3 hours.
+# So while games are live or about to start (scripts/game_window.py), this job loops by
+# itself every 10 minutes, saving news and box scores as soon as games go final. Outside
+# game windows a run does one pass and stops.
+#
+# GitHub-hosted jobs can run at most 6 hours, so a run stops after ~5h40m. Any scheduled
+# run that fires meanwhile waits in the queue (see concurrency) and takes over right away.
 on:
   schedule:
-    - cron: "*/10 * * * *"   # every 10 minutes (GitHub may run it a few minutes late)
+    - cron: "17,47 * * * *"  # off the top of the hour, when GitHub's queue is busiest
   workflow_dispatch:          # adds a "Run workflow" button on the Actions tab
 
 permissions:
@@ -15,7 +22,7 @@ concurrency:
 jobs:
   news:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v5
 
@@ -23,22 +30,29 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Collect news
-        run: python scripts/fetch_news.py
-        continue-on-error: true
-
-      - name: Collect box scores
-        run: python scripts/fetch_stats.py
-
-      - name: Commit changes
+      - name: Collect news and box scores while games are on
         run: |
+          set +e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --staged --quiet; then
-            echo "Nothing new to commit."
-            exit 0
-          fi
-          git commit -m "Update player news and stats"
-          git pull --rebase --autostash
-          git push
+          stop_at=$((SECONDS + 340 * 60))
+          quiet=0
+          while :; do
+            python scripts/fetch_news.py  || echo "News collection failed this pass; continuing."
+            python scripts/fetch_stats.py || echo "Box score collection failed this pass; continuing."
+            git add -A
+            if ! git diff --staged --quiet; then
+              git commit -q -m "Update player news and stats"
+              for i in 1 2 3; do
+                git pull -q --rebase --autostash && git push -q && break
+                sleep 5
+              done
+            fi
+            # Stop after two quiet checks in a row: the extra pass picks up a game that
+            # went final just before the first quiet check.
+            if python scripts/game_window.py; then quiet=0; else quiet=$((quiet + 1)); fi
+            [ "$quiet" -ge 2 ] && break
+            [ "$SECONDS" -ge "$stop_at" ] && break
+            sleep 600
+          done
+          exit 0

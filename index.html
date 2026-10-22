@@ -576,6 +576,8 @@ function openCard(id) {
   const owner = whoHas(id);
   const ownerTag = owner == null ? `<span class="badge ok first">Available in your league</span>` : isMe(owner) ? `<span class="badge home first">On your team</span>` : `<span class="badge plain first">${esc(teamName(owner))}</span>`;
   const status = `<span class="badge ${statusCls(p.i)} first">${esc(statusLabel(p.i))}</span>${p.b ? ` <span class="muted">${esc(p.b)}</span>` : ""}`;
+  const wkPts = weekPts(id);
+  const wkTag = wkPts == null ? "" : `<span class="badge plain first" title="Live from Sleeper">Week ${S.week}: ${wkPts.toFixed(1)} pts</span>`;
   const items = newsFor(id);
   let news;
   if (S.news?.missing) news = `<div class="pc-empty">No news file yet. News comes from <code>news.json</code> next to this page, which the “Update player news” GitHub Action creates on its first run.</div>`;
@@ -588,7 +590,7 @@ function openCard(id) {
       ${n.url ? `<a class="src" href="${esc(n.url)}" target="_blank" rel="noopener">Read on ${esc(n.src)} ↗</a>` : ""}
     </article>`).join("");
   $("pcBody").innerHTML = `
-    <header class="pc-head">${headshot(id, 64).replace('data-pid', 'data-x')}<div class="pc-id"><h2>${esc(p.n)}</h2><span class="muted">${esc(p.p || "")} · ${esc(p.t || "Free agent")}</span><div class="pc-tags">${status}${ownerTag}</div></div>
+    <header class="pc-head">${headshot(id, 64).replace('data-pid', 'data-x')}<div class="pc-id"><h2>${esc(p.n)}</h2><span class="muted">${esc(p.p || "")} · ${esc(p.t || "Free agent")}</span><div class="pc-tags">${status}${ownerTag}${wkTag}</div></div>
       <button type="button" class="pc-x" id="pcClose" aria-label="Close">×</button></header>
     ${p.no ? `<div class="pc-note"><span class="eyebrow">Injury note</span><p>${esc(p.no)}</p></div>` : ""}
     <div id="pcStats" class="pc-stats"></div>
@@ -614,6 +616,11 @@ function injury(id) {
 const pSub = id => { const p = P(id); return p ? `${p.p || "—"} · ${p.t || "Free agent"}` : ""; };
 const rosterPts = r => (r.settings?.fpts || 0) + (r.settings?.fpts_decimal || 0) / 100;
 const rosterPA = r => (r.settings?.fpts_against || 0) + (r.settings?.fpts_against_decimal || 0) / 100;
+/* This week's fantasy points for a rostered player, live from Sleeper (null if not rostered) */
+function weekPts(pid) {
+  for (const m of S.matchups[S.week] || []) { const v = m.players_points?.[pid]; if (v != null) return Number(v); }
+  return null;
+}
 function whoHas(pid) { for (const r of S.rosters) if ((r.players || []).includes(pid)) return r.roster_id; return null; }
 const starterSlots = () => (S.league?.roster_positions || []).filter(p => !["BN", "IR", "TAXI"].includes(p));
 function record(rid) { const s = rosterById(rid)?.settings || {}; return `${s.wins || 0}-${s.losses || 0}${s.ties ? "-" + s.ties : ""}`; }
@@ -1184,15 +1191,24 @@ async function fillCardStats(id) {
 }
 
 /* ---------- Players tab: Sleeper-style search ---------- */
-S.pf = { q: "", pos: "ALL", avail: "all", team: "", health: "all", sort: "fpg", season: null, limit: 50 };
+S.pf = { q: "", pos: "ALL", avail: "all", team: "", health: "all", sort: "fpg", season: null, limit: 50, earlyNote: null };
+const EARLY_SEASON_GAMES = 75;          // about 5 games per team
 const POS = ["ALL", "PG", "SG", "SF", "PF", "C", "G", "F"];
-const SORTS = [["fpg", "Fantasy pts per game"], ["fpt", "Total fantasy pts"], ["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["stl", "Steals"], ["blk", "Blocks"], ["tpm", "3-pointers made"], ["min", "Minutes"], ["trend", "Trending adds (24 hr)"], ["name", "Name"]];
+const SORTS = [["fpg", "Fantasy pts per game"], ["fpt", "Total fantasy pts"], ["wk", "This week (live from Sleeper)"], ["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["stl", "Steals"], ["blk", "Blocks"], ["tpm", "3-pointers made"], ["min", "Minutes"], ["trend", "Trending adds (24 hr)"], ["name", "Name"]];
 async function viewPlayers(v) {
   v.innerHTML = skeleton(6);
   await Promise.all([loadStats(), loadTrending().catch(() => {})]);
   const st = S.stats, seasons = shownSeasons();
   // This season is the default; past seasons are offered once fully collected.
-  if (!seasons.some(se => se.label === S.pf.season)) S.pf.season = seasons[0]?.label || null;
+  // Early in a season the current season has only a handful of games, so most players would
+  // show no stats at all. Until it has EARLY_SEASON_GAMES games, default to last season instead.
+  // A season the viewer picks themselves is always kept.
+  if (!seasons.some(se => se.label === S.pf.season)) {
+    const cur = seasons.find(se => se.current), prev = seasons.find(se => !se.current);
+    const useCur = cur && (cur.games >= EARLY_SEASON_GAMES || !prev);
+    S.pf.season = (useCur ? cur : prev || cur)?.label || null;
+    S.pf.earlyNote = !useCur && cur && prev ? { cur: cur.label, prev: prev.label, games: cur.games } : null;
+  }
   if (S.pf.season) await loadTotals(S.pf.season);
   if (S.tab !== "players") return;
   const teams = [...new Set(Object.values(S.players).map(p => p.t).filter(Boolean))].sort();
@@ -1216,7 +1232,8 @@ async function viewPlayers(v) {
           ${seasons.map(se => `<option value="${esc(se.label)}" ${f.season === se.label ? "selected" : ""}>${esc(se.label)}</option>`).join("") || `<option value="">No stats yet</option>`}</select></label>
       </div>
     </div>
-    <div class="card"><div class="tbl-wrap"><table class="ptbl"><thead><tr><th class="n">#</th><th>Player</th><th>Fantasy team</th><th class="n">GP</th><th class="n">FP/G</th><th class="n">MIN</th><th class="n">PTS</th><th class="n">REB</th><th class="n">AST</th><th class="n">STL</th><th class="n">BLK</th><th class="n">3PM</th><th class="n">TO</th><th class="n">FG%</th></tr></thead><tbody id="pfBody"></tbody></table></div>
+    ${S.pf.earlyNote && f.season === S.pf.earlyNote.prev ? `<div class="pc-empty">${esc(S.pf.earlyNote.cur)} only has ${S.pf.earlyNote.games} game${S.pf.earlyNote.games === 1 ? "" : "s"} so far, so stats are from ${esc(S.pf.earlyNote.prev)}. Switch “Stats from” to see this season. The Wk column shows each rostered player's live Sleeper points this week.</div>` : ""}
+    <div class="card"><div class="tbl-wrap"><table class="ptbl"><thead><tr><th class="n">#</th><th>Player</th><th>Fantasy team</th><th class="n" title="Fantasy points this week, live from Sleeper (rostered players only)">Wk</th><th class="n">GP</th><th class="n">FP/G</th><th class="n">MIN</th><th class="n">PTS</th><th class="n">REB</th><th class="n">AST</th><th class="n">STL</th><th class="n">BLK</th><th class="n">3PM</th><th class="n">TO</th><th class="n">FG%</th></tr></thead><tbody id="pfBody"></tbody></table></div>
       <div class="pf-more" id="pfMore"></div></div>
     ${st.missing ? `<div class="pc-empty">Stats haven't been collected yet, so only names and filters work. Once the GitHub Action runs, stat columns fill in.</div>` : ""}
   </div>`;
@@ -1224,7 +1241,7 @@ async function viewPlayers(v) {
   $("pfQ").oninput = e => { f.q = e.target.value; f.limit = 50; rerender(); };
   $("pfPos").onclick = e => { const b = e.target.closest("button"); if (!b) return; f.pos = b.dataset.pos; f.limit = 50; $("pfPos").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); rerender(); };
   [["pfAvail", "avail"], ["pfTeam", "team"], ["pfHealth", "health"], ["pfSort", "sort"]].forEach(([id, k]) => $(id).onchange = e => { f[k] = e.target.value; f.limit = 50; rerender(); });
-  $("pfSeason").onchange = async e => { f.season = e.target.value; f.limit = 50; $("pfBody").innerHTML = `<tr><td colspan="14" class="muted">Loading ${esc(f.season)}…</td></tr>`; await loadTotals(f.season); rerender(); };
+  $("pfSeason").onchange = async e => { f.season = e.target.value; f.limit = 50; $("pfBody").innerHTML = `<tr><td colspan="15" class="muted">Loading ${esc(f.season)}…</td></tr>`; await loadTotals(f.season); rerender(); };
   rerender();
 }
 function renderPlayerRows() {
@@ -1232,11 +1249,14 @@ function renderPlayerRows() {
   const q = norm(f.q);
   const trend = Object.fromEntries((S.trending?.add || []).map(x => [x.player_id, x.count]));
   const owners = {}; S.rosters.forEach(r => (r.players || []).forEach(p => owners[p] = r.roster_id));
+  // Live points this week straight from Sleeper's matchups (covers every rostered player,
+  // starters and bench). Box scores lag behind by up to one Action run; this doesn't.
+  const wk = {}; (S.matchups[S.week] || []).forEach(m => Object.entries(m.players_points || {}).forEach(([pid, v]) => wk[pid] = Number(v)));
   let rows = [];
   for (const [id, p] of Object.entries(S.players)) {
     const owner = owners[id];
-    if (!p.t && owner == null) continue;
-    if (q && !norm(p.n).includes(q)) continue;
+    if (!p.t && owner == null && !q) continue;          // unsigned players only show up when searched for
+    if (!nameMatches(p.n, q)) continue;
     if (f.pos !== "ALL" && !(p.p || "").split("/").includes(f.pos)) continue;
     if (f.avail === "avail" && owner != null) continue;
     if (f.avail === "rostered" && owner == null) continue;
@@ -1244,10 +1264,10 @@ function renderPlayerRows() {
     if (f.team && p.t !== f.team) continue;
     if (f.health === "healthy" && p.i) continue;
     if (f.health === "noout" && /out|susp/i.test(p.i)) continue;
-    rows.push({ id, p, owner, s: seasonLine(id, f.season), tr: trend[id] || 0 });
+    rows.push({ id, p, owner, s: seasonLine(id, f.season), tr: trend[id] || 0, wk: wk[id] });
   }
   const key = f.sort;
-  const val = r => key === "name" ? 0 : key === "trend" ? r.tr : r.s ? (r.s[key] ?? -1) : -1;
+  const val = r => key === "name" ? 0 : key === "trend" ? r.tr : key === "wk" ? (r.wk ?? -1e9) : r.s ? (r.s[key] ?? -1) : -1;
   rows.sort((a, b) => key === "name" ? a.p.n.localeCompare(b.p.n) : (val(b) - val(a)) || a.p.n.localeCompare(b.p.n));
   const shown = rows.slice(0, f.limit);
   const tag = o => o == null ? `<span class="badge ok first">Available</span>` : isMe(o) ? `<span class="badge home first">Yours</span>` : `<span class="badge plain first">${esc(teamName(o))}</span>`;
@@ -1255,14 +1275,26 @@ function renderPlayerRows() {
     const s = r.s;
     const c = k => `<td class="n${key === k ? " hi" : ""}">${s ? n1(s[k]) : "—"}</td>`;
     return `<tr><td class="n muted">${i + 1}</td><td><div class="pcell">${headshot(r.id, 34)}<span class="t"><b>${pBtn(r.id)}${injury(r.id)}</b><small>${esc(r.p.p || "")} · ${esc(r.p.t || "Free agent")}${key === "trend" && r.tr ? ` · +${r.tr.toLocaleString()} adds` : ""}</small></span></div></td>
-      <td>${tag(r.owner)}</td><td class="n">${s ? s.gp : "—"}</td>${c("fpg")}${c("min")}${c("pts")}${c("reb")}${c("ast")}${c("stl")}${c("blk")}${c("tpm")}${c("to")}<td class="n">${s ? pctf(s.fgp) : "—"}</td></tr>`;
-  }).join("") : `<tr><td colspan="14" class="muted">No players match these filters.</td></tr>`;
+      <td>${tag(r.owner)}</td><td class="n${key === "wk" ? " hi" : ""}">${r.wk == null ? "—" : r.wk.toFixed(1)}</td><td class="n">${s ? s.gp : "—"}</td>${c("fpg")}${c("min")}${c("pts")}${c("reb")}${c("ast")}${c("stl")}${c("blk")}${c("tpm")}${c("to")}<td class="n">${s ? pctf(s.fgp) : "—"}</td></tr>`;
+  }).join("") : `<tr><td colspan="15" class="muted">No players match these filters.</td></tr>`;
   $("pfMore").innerHTML = rows.length > f.limit ? `<button type="button" class="ctl" id="pfMoreBtn">Show more (${(rows.length - f.limit).toLocaleString()} left)</button>` : "";
   $("pfMoreBtn")?.addEventListener("click", () => { f.limit += 50; renderPlayerRows(); });
   const st = S.stats;
   $("pfMeta").textContent = `${rows.length.toLocaleString()} players · ${st?.missing ? "no stats yet" : `box scores updated ${st?.updated ? ago(st.updated) : "—"}`}`;
 }
-function norm(s) { return String(s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, ""); }
+/* Search text: accents dropped, hyphens become spaces ("Karl-Anthony" -> "karl anthony"),
+   other punctuation dropped ("P.J." -> "pj", "De'Aaron" -> "deaaron"), spaces collapsed. */
+function norm(s) {
+  return String(s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/[-_‐-―]/g, " ").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+}
+/* A name matches if the query appears in it with or without spaces, so "karl anthony",
+   "karlanthony", "gilgeous alexander" and "gilgeous-alexander" all find their player. */
+function nameMatches(name, q) {
+  if (!q) return true;
+  const n = norm(name);
+  return n.includes(q) || n.replace(/ /g, "").includes(q.replace(/ /g, ""));
+}
 
 /* ---------- events ---------- */
 $("findBtn").onclick = findLeagues;
