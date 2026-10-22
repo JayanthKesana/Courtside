@@ -749,7 +749,7 @@ async function refresh() {
   try {
     const [rosters, mu] = await Promise.all([get(`/league/${id}/rosters`), get(`/league/${id}/matchups/${S.week}`)]);
     S.rosters = rosters; S.matchups[S.week] = mu || [];
-    await Promise.all([loadPlayers(), loadNews()]);   // players: only re-downloaded every 4 hours
+    await Promise.all([loadPlayers(), loadNews(), loadLineups(S.week)]);   // players: only re-downloaded every 4 hours
     trackStatusChanges();
     if (S.tab === "moves") await loadTx(true);
     if (S.tab === "trending") await loadTrending(true);
@@ -801,6 +801,39 @@ function renderAlerts() {
     : `<div class="alert ok"><span class="dot"></span><span>Lineup is full and no starters are on the injury report</span></div>`;
 }
 
+/* ---------- lock-in scoring, the way the Sleeper app shows it ----------
+   Sleeper's API credits a starter with his latest game even if he played it from your bench.
+   The app doesn't: in a lock-in league a game only counts if he was in your starting lineup
+   while it was played. lineups/<league>-w<week>.json, kept by the "Record lineups" GitHub
+   Action, records who was starting during each game. Without that file, the API's number is used. */
+S.lineups = {};
+async function loadLineups(week) {
+  try {
+    const r = await fetch(`lineups/${S.league.league_id}-w${week}.json?t=${Math.floor(Date.now() / 60e3)}`, { cache: "no-store" });
+    S.lineups[week] = r.ok ? await r.json() : null;
+  } catch { S.lineups[week] = null; }
+}
+function starterScore(m, pid, i) {
+  const api = Number(m.starters_points?.[i] ?? 0);
+  const L = S.lineups[S.week];
+  const seen = L?.started?.[String(m.roster_id)]?.[pid];
+  if (!seen) return { pts: api };
+  const games = Object.keys(seen).filter(g => L.games?.[g]).sort((a, b) => L.games[a].start.localeCompare(L.games[b].start));
+  const last = games[games.length - 1];
+  if (!last || seen[last]) return { pts: api };                       // he was starting for his latest game
+  // His latest game was played from the bench, so it can't count. Fall back to an earlier game he started.
+  const earlier = games.filter(g => seen[g] && L.score_after?.[g]?.[pid] != null).pop();
+  if (earlier) return { pts: Number(L.score_after[earlier][pid]) };
+  return { pts: 0, pending: true };                                    // nothing counts yet: show "–"
+}
+/* Team total with the same correction applied to each starter */
+function teamPts(m) {
+  if (!m) return 0;
+  let t = Number(m.points) || 0;
+  (m.starters || []).forEach((pid, i) => { t += starterScore(m, pid, i).pts - Number(m.starters_points?.[i] ?? 0); });
+  return Math.round(t * 100) / 100;
+}
+
 /* ---------- views ---------- */
 function render() {
   renderAlerts();
@@ -821,9 +854,9 @@ function viewMatchup(v) {
   if (!game) { v.innerHTML = `<div class="empty">${S.myRosterId ? `No matchup posted for week ${S.week} yet. Sleeper adds them once the schedule is set.` : "Pick your team at the top to see your matchup."}</div>`; return; }
   let [a, b] = game;
   if (b && isMe(b.roster_id)) [a, b] = [b, a];
-  const pa = Number(a.points) || 0, pb = Number(b?.points) || 0;
+  const pa = teamPts(a), pb = teamPts(b);
   const slots = starterSlots();
-  const rowsFor = m => (m?.starters || []).map((pid, i) => ({ pid, pts: Number(m.starters_points?.[i] ?? 0) }));
+  const rowsFor = m => (m?.starters || []).map((pid, i) => ({ pid, ...starterScore(m, pid, i) }));
   const sa = rowsFor(a), sb = rowsFor(b);
   const topA = Math.max(0, ...sa.map(r => r.pts)), topB = Math.max(0, ...sb.map(r => r.pts));
   const cell = (r, right, top, bench) => {
@@ -832,7 +865,7 @@ function viewMatchup(v) {
     const nm = pName(r.pid);
     if (!nm) return `<div class="${cls}"><span class="badge bad first">Empty slot</span></div>`;
     const isTop = top > 0 && r.pts === top && !bench;
-    return `<div class="${cls} ${isTop ? "top" : ""}">${headshot(r.pid, 34)}<span class="who"><b>${pBtn(r.pid)}${injury(r.pid)}</b><small>${esc(pSub(r.pid))}</small></span><span class="pts">${f2(r.pts)}</span></div>`;
+    return `<div class="${cls} ${isTop ? "top" : ""}">${headshot(r.pid, 34)}<span class="who"><b>${pBtn(r.pid)}${injury(r.pid)}</b><small>${esc(pSub(r.pid))}</small></span><span class="pts"${r.pending ? ` title="He played this week's game from your bench, so it can't count. Waiting on his next game."` : ""}>${r.pending ? "–" : f2(r.pts)}</span></div>`;
   };
   let lines = "";
   const n = Math.max(slots.length, sa.length, sb.length);
@@ -865,7 +898,7 @@ function viewScores(v) {
   if (!games.length) { v.innerHTML = `<div class="empty">No matchups posted for week ${S.week} yet.</div>`; return; }
   v.innerHTML = `<div class="panel"><div class="panel-head"><div><span class="eyebrow">Week ${S.week}</span><h2>Scoreboard</h2></div><span class="muted">Select a game to see both lineups</span></div><div class="board">${
     games.map(g => {
-      const [a, b] = g; const pa = Number(a.points) || 0, pb = Number(b?.points) || 0;
+      const [a, b] = g; const pa = teamPts(a), pb = teamPts(b);
       const mine = g.some(m => isMe(m.roster_id));
       const side = (m, p, lead, cls) => `<div class="side ${lead ? "lead" : "trail"}">${teamAv(m.roster_id, 34, cls)}<span class="nm"><b>${esc(teamName(m.roster_id))}</b><small>${esc(record(m.roster_id))}</small></span><span class="p">${f2(p)}</span></div>`;
       return `<button class="game ${mine ? "mine" : ""}" data-mid="${a.matchup_id}">${mine ? `<span class="tag">Your game</span>` : ""}${side(a, pa, pa >= pb, "home")}${b ? side(b, pb, pb >= pa, "away") : ""}<div class="bar"><div class="h" style="width:${pct(pa, pb)}%"></div><div class="a"></div></div></button>`;
